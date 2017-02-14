@@ -12,7 +12,12 @@
 
 void HFPage::init(PageId pageNo)
 {
-  // fill in the body
+    curPage = pageNo;
+    nextPage = INVALID_PAGE;
+    prevPage = INVALID_PAGE;
+    slotCnt = 0; 
+    usedPtr = 0;
+    freeSpace = MAX_SPACE - DPFIXED;
 }
 
 // **********************************************************
@@ -35,28 +40,27 @@ void HFPage::dumpPage()
 // **********************************************************
 PageId HFPage::getPrevPage()
 {
-    // fill in the body
-    return 0;
+    return prevPage;
+    // return 0;
 }
 
 // **********************************************************
 void HFPage::setPrevPage(PageId pageNo)
 {
-
+    prevPage = pageNo;
     // fill in the body
 }
 
 // **********************************************************
 PageId HFPage::getNextPage()
 {
-    // fill in the body
-    return 0;
+    return nextPage;
 }
 
 // **********************************************************
 void HFPage::setNextPage(PageId pageNo)
 {
-  // fill in the body
+    nextPage = pageNo;
 }
 
 // **********************************************************
@@ -65,7 +69,14 @@ void HFPage::setNextPage(PageId pageNo)
 // RID of the new record is returned via rid parameter.
 Status HFPage::insertRecord(char* recPtr, int recLen, RID& rid)
 {
-    // fill in the body
+    if (available_space() >= recLen) {
+        rid->pageNo = curPage;
+        rid->slotNo = slotCnt + 1;
+        slotCnt++;
+               
+    } else {
+        return DONE;
+    }
     return OK;
 }
 
@@ -120,7 +131,6 @@ Status HFPage::returnRecord(RID rid, char*& recPtr, int& recLen)
 // Returns the amount of available space on the heap file page
 int HFPage::available_space(void)
 {
-    // fill in the body
     return 0;
 }
 
