@@ -21,8 +21,8 @@ static error_string_table hfTable( HEAPFILE, hfErrMsgs );
 // Constructor
 HeapFile::HeapFile( const char *name, Status& returnStatus )
 {
-   
     // fill in the body
+    
     returnStatus = OK;
    
 }
