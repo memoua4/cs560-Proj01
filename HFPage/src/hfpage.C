@@ -80,7 +80,7 @@ Status HFPage::insertRecord(char* recPtr, int recLen, RID& rid)
         memcpy(slot[i]->offset,recPtr, recLen);
         usedPtr = usedPtr - recLen;
         freeSpace = freeSpace - recLen - sizeof(slot_t);
-
+        
         if ( i == slotCnt ) {
             slotCnt++;
         }

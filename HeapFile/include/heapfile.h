@@ -60,6 +60,7 @@ class HeapFile {
     // deleted by the destructor.  
     // If the name already denotes a file, the
     // file is opened; otherwise, a new empty file is created.
+    // check if a file is deleted or not
     HeapFile( const char *name, Status& returnStatus ); 
     ~HeapFile();
 

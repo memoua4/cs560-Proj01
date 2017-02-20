@@ -39,7 +39,7 @@ public:
     virtual ~SystemDefs();
 
 
-    BufMgr*             GlobalBufMgr;
+    BufMgr*             GlobalBufMgr; // can use this global buffer manager
 
       /* We fake shared memory in single-user Minibase to simplify the
          maintenance of the two versions. */
