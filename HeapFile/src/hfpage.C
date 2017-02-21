@@ -2,10 +2,10 @@
 #include <stdlib.h>
 #include <memory.h>
 
-#include "hfpage.h"
-#include "heapfile.h"
-#include "buf.h"
-#include "db.h"
+#include "../include/hfpage.h"
+#include "../include/heapfile.h"
+#include "../include/buf.h"
+#include "../include/db.h"
 
 
 // **********************************************************
@@ -83,15 +83,15 @@ Status HFPage::insertRecord(char* recPtr, int recLen, RID& rid)
 
     int i;
     for ( i = 0; i <= slotCnt; i++ ) {
-        if (slot[i] == EMPTY_SLOT)
+        if (slot[i].length == EMPTY_SLOT)
             break;
     }
-    rid->pageNo = curPage;
-    rid->slotNo = i;
+    rid.pageNo = curPage;
+    rid.slotNo = i;
     usedPtr -= recLen;
-    slot[i]->offset = usedPtr;
-    slot[i]->length = recLen;
-    memcpy(data[slot[i]->offset], recPtr, recLen);
+    slot[i].offset = usedPtr;
+    slot[i].length = recLen;
+    memcpy(&data[slot[i].offset], recPtr, recLen);
     freeSpace = freeSpace - recLen - sizeof(slot_t);
     if (i > slotCnt) 
         slotCnt++;
@@ -105,16 +105,15 @@ Status HFPage::insertRecord(char* recPtr, int recLen, RID& rid)
 Status HFPage::deleteRecord(const RID& rid)
 {
     // fill in the body
-    if (rid->pageNo != curPage) 
+    if (rid.pageNo != curPage)
         return FAIL;
-    int no = rid->pageNo;
-    int offset = slot[no]->offset;
-    int len = slot[no]->length;
+    int no = rid.pageNo;
+    int offset = slot[no].offset;
+    int len = slot[no].length;
 
     // reset all the flag and free the struct
-    slot[no]->offset = -1;
-    slot[no]->length = EMPTY_SLOT;
-    free(rid);
+    slot[no].offset = -1;
+    slot[no].length = EMPTY_SLOT;
 
     // shift all the records to the right 
     int dest = usedPtr + len;
@@ -127,8 +126,8 @@ Status HFPage::deleteRecord(const RID& rid)
     // adjust all the offset for slot[rid->slot] who is not empty
     // and its offset must be less than the original offset of the deleted record
     for (int i = 0; i < slotCnt; i++) {
-        if (slot[i]->length != EMPTY_SLOT && slot[i]->offset < offset) {
-            slot[i]->offset += len;
+        if (slot[i].length != EMPTY_SLOT && slot[i].offset < offset) {
+            slot[i].offset += len;
         }
     }
     return OK;
@@ -140,9 +139,9 @@ Status HFPage::firstRecord(RID& firstRid)
 {
     // fill in the body
     for (int i = 0; i <= slotCnt; i++) {
-        if (slot[i] != EMPTY_SLOT) {
-            firstRid->pageNo = curPage;
-            firstRid->slotNo = i;
+        if (slot[i].length != EMPTY_SLOT) {
+            firstRid.pageNo = curPage;
+            firstRid.slotNo = i;
             return OK;
         }
     }
@@ -155,18 +154,18 @@ Status HFPage::firstRecord(RID& firstRid)
 Status HFPage::nextRecord (RID curRid, RID& nextRid)
 {
     // fill in the body
-    int curNo = curRid->slotNo;
-    if (curRid->pageNo != curPage)
+    int curNo = curRid.slotNo;
+    if (curRid.pageNo != curPage)
         return FAIL;
-    if (slot[curNo]->length == EMPTY_SLOT) 
+    if (slot[curNo].length == EMPTY_SLOT)
         return FAIL;
     if (curNo >= slotCnt)
         return FAIL;
 
     for (int i = curNo + 1; i <= slotCnt; i++ ) {
-        if (slot[i]->length != EMPTY_SLOT) {
-            nextRid->pageNo = curPage;
-            nextRid->slotNo = i;
+        if (slot[i].length != EMPTY_SLOT) {
+            nextRid.pageNo = curPage;
+            nextRid.slotNo = i;
             return OK;
         }
     }
@@ -178,15 +177,15 @@ Status HFPage::nextRecord (RID curRid, RID& nextRid)
 Status HFPage::getRecord(RID rid, char* recPtr, int& recLen)
 {
     // fill in the body
-    if (rid->pageNo != curPage)
+    if (rid.pageNo != curPage)
         return FAIL;
-    int no = rid->slotNo;
-    if (slot[no]->length == EMPTY_SLOT) 
+    int no = rid.slotNo;
+    if (slot[no].length == EMPTY_SLOT)
         return FAIL;
 
-    int offset = slot[no]->offset;
-    recLen = slot[no]->length;
-    memcpy(recPtr, data[offset], recLen);
+    int offset = slot[no].offset;
+    recLen = slot[no].length;
+    memcpy(recPtr, &data[offset], recLen);
     return OK;
 }
 
@@ -198,15 +197,15 @@ Status HFPage::getRecord(RID rid, char* recPtr, int& recLen)
 Status HFPage::returnRecord(RID rid, char*& recPtr, int& recLen)
 {
     // fill in the body
-    if (rid->pageNo != curPage) 
+    if (rid.pageNo != curPage)
         return FAIL;
-    int no = rid->slotNo;
-    if ( slot[no]->length == EMPTY_SLOT) 
+    int no = rid.slotNo;
+    if ( slot[no].length == EMPTY_SLOT)
         return FAIL;
 
-    int offset = slot[no]->offset;
-    recLen = slot[no]->length;
-    recPtr = data[offset];
+    int offset = slot[no].offset;
+    recLen = slot[no].length;
+    recPtr = &data[offset];
     return OK;
 }
 
@@ -225,7 +224,7 @@ bool HFPage::empty(void)
 {
     // fill in the body
     for (int i = 0; i < slotCnt; i++) {
-        if ( slot[i]->length != EMPTY_SLOT ) 
+        if ( slot[i].length != EMPTY_SLOT )
             return false;
     }
     return true;

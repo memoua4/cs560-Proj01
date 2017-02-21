@@ -1,4 +1,4 @@
-#include "heapfile.h"
+#include "../include/heapfile.h"
 
 // ******************************************************
 // Error messages for the heapfile layer
@@ -21,17 +21,47 @@ static error_string_table hfTable( HEAPFILE, hfErrMsgs );
 // Constructor
 HeapFile::HeapFile( const char *name, Status& returnStatus )
 {
+    if (name == NULL) {
+        fileName = "temp";
+    } else {
+        fileName = new char[strlen(name) + 1];
+        strcpy(fileName, name);
+    }
+
+    Status status;
+
+    if (name != NULL)
+        status = MINIBASE_DB->get_file_entry(fileName, firstDirPageId);
+    else
+        status = OK;
+
+    Page *newPage;
+
+    if (status != OK) {
+        status = MINIBASE_BM->newPage(firstDirPageId, newPage);
+        if (status != OK) {
+            returnStatus = MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+            return;
+        }
+
+        status = MINIBASE_DB->add_file_entry(fileName, firstDirPageId);
+        if (status != OK) {
+            returnStatus = MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+            return;
+        }
+
+        
+    }
+
     // fill in the body
-    
     returnStatus = OK;
-   
 }
 
 // ******************
 // Destructor
 HeapFile::~HeapFile()
 {
-   // fill in the body 
+   // fill in the body
 
 }
 
@@ -97,6 +127,7 @@ Status HeapFile::deleteFile()
 // (Allocate pages in the db file via buffer manager)
 Status HeapFile::newDataPage(DataPageInfo *dpinfop)
 {
+
     // fill in the body
     return OK;
 }

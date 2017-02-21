@@ -24,9 +24,9 @@ class HFPage {
         short   length;    // equals EMPTY_SLOT if slot is not in use
     };
 
-    static const int DPFIXED =       sizeof(slot_t)
-                           + 4 * sizeof(short)
-                           + 3 * sizeof(PageId);
+    static const int DPFIXED =       sizeof(slot_t)  // slot[1]
+                               + 4 * sizeof(short)   // slotCnt, usedPtr, freeSpace, type
+                               + 3 * sizeof(PageId); // prevPage, nextPage, curPage
 
       // Warning:
       // These items must all pack tight, (no padding) for

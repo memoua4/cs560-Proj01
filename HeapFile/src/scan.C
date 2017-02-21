@@ -6,11 +6,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "heapfile.h"
-#include "scan.h"
-#include "hfpage.h"
-#include "buf.h"
-#include "db.h"
+#include "../include/heapfile.h"
+#include "../include/scan.h"
+#include "../include/hfpage.h"
+#include "../include/buf.h"
+#include "../include/db.h"
 
 // *******************************************
 // The constructor pins the first page in the file

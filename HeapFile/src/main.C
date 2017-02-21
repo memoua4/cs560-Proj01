@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <iostream>
 
-#include "heap_driver.h"
+#include "../include/heap_driver.h"
 
 int MINIBASE_RESTART_FLAG = 0;
 

@@ -10,11 +10,11 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "db.h"
-#include "heapfile.h"
-#include "scan.h"
-#include "heap_driver.h"
-#include "buf.h"
+#include "../include/db.h"
+#include "../include/heapfile.h"
+#include "../include/scan.h"
+#include "../include/heap_driver.h"
+#include "../include/buf.h"
 
 using namespace std;
 
