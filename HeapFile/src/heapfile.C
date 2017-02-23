@@ -78,7 +78,7 @@ HeapFile::HeapFile(const char *name, Status &returnStatus) {
 HeapFile::~HeapFile()
 {
    // fill in the body
-    deleted_file = 1;
+    file_deleted = 1;
     delete [] fileName;
 }
 
@@ -168,26 +168,26 @@ Status HeapFile::insertRecord(char *recPtr, int recLen, RID& outRid)
 
     while (true) {
         // pin page
-        MINIBASE_DB->pinPage(curPageId, (Page *)&curPage);
-        status = curPage->insertRecord(recPtr, recLen, outRid);
+        MINIBASE_BM->pinPage(curPageId, (Page *&)curPage);
+        status = curPage.insertRecord(recPtr, recLen, outRid);
         if ( status != OK ) {
             // get next page id
             prevPageId = curPageId;
-            curPageId = curPage->getNextPage();
+            curPageId = curPage.getNextPage();
         }
         // unpin page
-        MINIBASE_DB->unpinPage(curPageId);
+        MINIBASE_BM->unpinPage(curPageId);
     
         if ( status == OK ) 
             break;
 
         if ( curPageId == INVALID_PAGE ) {
             HFPage newPage;
-            MINIBASE_DB->pinPage(prevPageId, (Page *)&curPage);
-            MINIBASE_DB->newPage(curPageId, (Page *)&newPage);
-            curPage->setNextPage(newPage);
-            status = newPage->insertRecord(recPtr, recLen, outRid);
-            MINIBASE_DB->unpinPage(prevPageId);
+            MINIBASE_BM->pinPage(prevPageId, (Page *&)curPage);
+            MINIBASE_BM->newPage(curPageId, (Page *&)newPage);
+            curPage.setNextPage(newPage.page_no());
+            status = newPage.insertRecord(recPtr, recLen, outRid);
+            MINIBASE_BM->unpinPage(prevPageId);
             break;
         }
     }
@@ -285,10 +285,10 @@ Status HeapFile::updateRecord (const RID& rid, char *recPtr, int recLen)
     while (curPageId != NULL) {
         MINIBASE_BM->pinPage(curPageId, (Page *&)curPage);
         //HFPage::getRecord(RID rid, char* recPtr, int& recLen)
-        status = curPage->getRecord(rid, &updateRecord, &updateLen);
+        status = curPage.getRecord(rid, updateRec, updateLen);
         if (status != OK) {
             prevPageId = curPageId;
-            curPageId = curPage->getNextPage();
+            curPageId = curPage.getNextPage();
         }
         MINIBASE_BM->unpinPage(prevPageId);
 
@@ -301,7 +301,7 @@ Status HeapFile::updateRecord (const RID& rid, char *recPtr, int recLen)
     if (updateLen != recLen)
         return FAIL; // file could not update
 
-    memcpy(recPtr, updateRecord, recLen);
+    memcpy(recPtr, updateRec, recLen);
     return OK;
 
 }
@@ -332,8 +332,8 @@ Status HeapFile::getRecord(const RID &rid, char *recPtr, int &recLen) {
 Scan *HeapFile::openScan(Status& status)
 {
   // fill in the body 
-    status = Scan::Scan(this, status);
-    return NULL;
+    Scan scan = Scan::Scan(this, status);
+    return &scan;
 }
 
 // ****************************************************
@@ -388,17 +388,14 @@ Status HeapFile::newDataPage(DataPageInfo *dpinfop)
     // fill in the body
     PageId newPageId;
     Page *newPage;
-    Status status = MINIBASE_BM->newPage(newPageId, newPage); // create a new page
-
-    if ( status != OK ) 
-        return DONE;
+    MINIBASE_BM->newPage(newPageId, newPage); // create a new page
 
     HFPage hfpage;
-    hfpage->init(newPageId);
+    hfpage.init(newPageId);
 
-    dpinfop.availableSapce = hfpage->available_space();
-    dpinfop.recct = 0;
-    dpinfop.pageId = hfpage->page_no();
+    dpinfop->availspace = hfpage.available_space();
+    dpinfop->recct = 0;
+    dpinfop->pageId = hfpage.page_no();
     return OK;
 }
 
