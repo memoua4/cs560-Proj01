@@ -205,7 +205,10 @@ Status HeapFile::newDataPage(DataPageInfo *dpinfop)
     // fill in the body
     PageId newPageId;
     Page *newPage;
-    MINIBASE_BM->newPage(newPageId, newPage); // create a new page
+    Status status = MINIBASE_BM->newPage(newPageId, newPage); // create a new page
+
+    if ( status != OK ) 
+        return DONE;
 
     HFPage hfpage;
     hfpage->init(newPageId);
