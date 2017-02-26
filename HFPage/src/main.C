@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <iostream>
 
-#include "hfp_driver.h"
+#include "../include/hfp_driver.h"
 
 int MINIBASE_RESTART_FLAG = 0;
 

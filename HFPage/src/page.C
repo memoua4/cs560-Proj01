@@ -7,7 +7,7 @@
 #    include <iostream.h>
 #endif
 
-#include "page.h"
+#include "../include/page.h"
 
 // Methods of the class Page
 //***********************************************************

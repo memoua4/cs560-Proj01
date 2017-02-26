@@ -5,9 +5,9 @@
 
 #include <new>
 #include <stdio.h>
-#include "minirel.h"
-#include "db.h"
-#include "buf.h"
+#include "../include/minirel.h"
+#include "../include/db.h"
+#include "../include/buf.h"
 
 using namespace std;
 
