@@ -10,6 +10,10 @@ static const char *hfErrMsgs[] = {"bad record id", "bad record pointer", "end of
 
 static error_string_table hfTable(HEAPFILE, hfErrMsgs);
 
+    Status allocateDirSpace(struct DataPageInfo * dpinfop,/* data page information*/
+                            PageId &allocDirPageId,/*Directory page having the first data page record*/
+                            RID &allocDataPageRid /*RID of the first data page record*/);
+
 // ********************************************************
 // Constructor
 HeapFile::HeapFile(const char *name, Status &returnStatus)
@@ -77,9 +81,14 @@ HeapFile::HeapFile(const char *name, Status &returnStatus)
 // Destructor
 HeapFile::~HeapFile()
 {
-    // fill in the body
-    file_deleted = 1;
-    delete[] fileName;
+   // fill in the body
+    if ( file_deleted != 1 ) { // the file has not been deleted
+        Status status = deleteFile();
+
+        if ( status != OK ) {
+            return;
+        }
+    }
 }
 
 
@@ -147,41 +156,52 @@ int HeapFile::getRecCnt()
  */
 Status HeapFile::insertRecord(char *recPtr, int recLen, RID &outRid)
 {
-    // fill in the body
     PageId curPageId = firstDirPageId;
-    PageId prevPageId = INVALID_PAGE;
+    PageId nextPageId;
+    PageId prevPageId;
     HFPage curPage;
     Status status;
 
-    while (true)
-    {
-        // pin page
-        MINIBASE_BM->pinPage(curPageId, (Page *&) curPage);
+    while (curPageId != INVALID_PAGE) {
+        Status status = MINIBASE_BM->pinPage(curPageId, (Page *&)curPage);
+        if ( status != OK ) 
+            return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+
         status = curPage.insertRecord(recPtr, recLen, outRid);
-        if (status != OK)
-        {
-            // get next page id
-            prevPageId = curPageId;
-            curPageId = curPage.getNextPage();
-        }
-        // unpin page
-        MINIBASE_BM->unpinPage(curPageId);
 
-        if (status == OK)
+        nextPageId = curPage.getNextPage();
+
+        status = MINIBASE_BM->unpinPage(curPageId);
+        if ( status != OK ) 
+            return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+
+        if (status == OK ) 
             break;
 
-        if (curPageId == INVALID_PAGE)
-        {
-            HFPage newPage;
-            MINIBASE_BM->pinPage(prevPageId, (Page *&) curPage);
-            MINIBASE_BM->newPage(curPageId, (Page *&) newPage);
-            curPage.setNextPage(newPage.page_no());
-            status = newPage.insertRecord(recPtr, recLen, outRid);
-            MINIBASE_BM->unpinPage(prevPageId);
-            break;
-        }
+        prevPageId = curPageId;
+        curPageId = nextPageId;
     }
-    return status;
+
+    if (curPageId == INVALID_PAGE) {
+        DataPageInfo *dpinfop;
+        // status = allocateDirSpace(dpinfop, prevPageId, outRid);
+        status = newDataPage(dpinfop);
+        if ( status != OK ) 
+            return status;
+
+        status = MINIBASE_BM->pinPage(prevPageId, (Page *&) curPage);
+        if ( status != OK ) 
+            return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+
+        status = curPage.insertRecord(recPtr, recLen, outRid);
+        if ( status != OK ) 
+            return status;
+
+        status = MINIBASE_BM->unpinPage(prevPageId);
+        if ( status != OK ) 
+            return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+    }
+    return OK;
 }
 
 
@@ -220,38 +240,35 @@ Status HeapFile::deleteRecord(const RID &rid)
 // updates the specified record in the heapfile.
 Status HeapFile::updateRecord(const RID &rid, char *recPtr, int recLen)
 {
-    // fill in the body
-    PageId curPageId = firstDirPageId;
-    PageId prevPageId;
-    HFPage curPage;
-    Status status;
-    char *updateRec;
-    int updateLen;
+    PageId rpDirPageId, rpDataPageId;
+    HFPage *rpdirpage, *rpdatapage;
+    RID rpDataPageRid;
 
-    while (curPageId != NULL)
-    {
-        MINIBASE_BM->pinPage(curPageId, (Page *&) curPage);
-        //HFPage::getRecord(RID rid, char* recPtr, int& recLen)
-        status = curPage.getRecord(rid, updateRec, updateLen);
-        if (status != OK)
-        {
-            prevPageId = curPageId;
-            curPageId = curPage.getNextPage();
-        }
-        MINIBASE_BM->unpinPage(prevPageId);
+    Status status = findDataPage(rid, rpDirPageId, rpdirpage, rpDataPageId, rpdatapage, rpDataPageRid);
 
-        if (status == OK)
-            break;
-    }
-    if (curPageId == INVALID_PAGE)
-        return DONE; // file does not exists 
+    if ( status != OK ) 
+        return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
 
-    if (updateLen != recLen)
-        return FAIL; // file could not update
+    char *foundRec = NULL;
+    int foundLen;
 
-    memcpy(recPtr, updateRec, recLen);
+    status = MINIBASE_BM->pinPage(rpDataPageId, (Page *&) rpdatapage);
+    if ( status != OK ) 
+        return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+
+    status = rpdatapage->getRecord(rpDataPageRid, foundRec, foundLen);
+    if ( status != OK ) 
+        return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+
+    status =  MINIBASE_BM->unpinPage(rpDataPageId);
+    if ( status != OK ) 
+        return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+
+    if (recLen != foundLen) 
+        return FAIL;
+
+    memcpy(recPtr, foundRec, recLen);
     return OK;
-
 }
 
 // ***************************************************
@@ -278,12 +295,12 @@ Status HeapFile::getRecord(const RID &rid, char *recPtr, int &recLen)
 // initiate a sequential scan
 Scan *HeapFile::openScan(Status &status)
 {
-    // fill in the body
-    Scan *scan = new Scan(this, status);
+  // fill in the body 
+    Scan * scan =  new Scan(this, status);
     return scan;
 }
 
-// ****************************************************
+// ***************************************************
 // Wipes out the heapfile from the database permanently. 
 Status HeapFile::deleteFile()
 {
@@ -341,14 +358,19 @@ Status HeapFile::newDataPage(DataPageInfo *dpinfop)
     // fill in the body
     PageId newPageId;
     Page *newPage;
-    MINIBASE_BM->newPage(newPageId, newPage); // create a new page
+    Status status = MINIBASE_BM->newPage(newPageId, newPage); // create a new page
+
+    if ( status != OK ) {
+        return MINIBASE_FIRST_ERROR(HEAPFILE, status);
+    }
 
     HFPage hfpage;
     hfpage.init(newPageId);
 
     dpinfop->availspace = hfpage.available_space();
     dpinfop->recct = 0;
-    dpinfop->pageId = hfpage.page_no();
+    dpinfop->pageId = newPageId;
+    
     return OK;
 }
 
@@ -420,11 +442,51 @@ Status HeapFile::findDataPage(const RID &rid, PageId &rpDirPageId, HFPage *&rpdi
 
 // *********************************************************************
 // Allocate directory space for a heap file page 
-
-Status allocateDirSpace(struct DataPageInfo *dpinfop, PageId &allocDirPageId, RID &allocDataPageRid)
+Status allocateDirSpace(struct DataPageInfo * dpinfop,
+                            PageId &allocDirPageId,
+                            RID &allocDataPageRid)
 {
     // fill in the body
+    HFPage newDirPage;
+    PageId newDirPageId;
+
+    Status status = MINIBASE_BM->newPage(newDirPageId, (Page *&)newDirPage);
+    if ( status != OK ) 
+        return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+
+    newDirPage.init(newDirPageId);
+    newDirPage.setNextPage(INVALID_PAGE);
+    newDirPage.setPrevPage(allocDirPageId);
+
+    HFPage curDirPage;
+    status = MINIBASE_BM->pinPage(allocDirPageId, (Page *&)curDirPage);
+    if ( status != OK ) 
+        return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+
+    curDirPage.setNextPage(newDirPageId);
+
+    status = MINIBASE_BM->unpinPage(allocDirPageId);
+    if ( status != OK ) 
+        return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+
+    dpinfop->availspace = newDirPage.available_space();
+    dpinfop->recct = 0;
+    dpinfop->pageId = newDirPageId;
+
+    status = MINIBASE_BM->pinPage(newDirPageId, (Page *&)newDirPage);
+    if ( status != OK ) 
+        return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+
+    status = newDirPage.firstRecord(allocDataPageRid);
+    if ( status != OK ) 
+        return status;
+
+    status = MINIBASE_BM->unpinPage(newDirPageId);
+    if ( status != OK ) 
+        return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+
     return OK;
+
 }
 
 // *******************************************

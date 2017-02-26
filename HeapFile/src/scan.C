@@ -26,6 +26,7 @@ Scan::Scan (HeapFile *hf, Status& status)
 Scan::~Scan()
 {
   // put your code here
+  reset();
 }
 
 // *******************************************
@@ -42,7 +43,9 @@ Status Scan::getNext(RID& rid, char *recPtr, int& recLen)
 Status Scan::init(HeapFile *hf)
 {
   // put your code here
-  return OK;
+  _hf = hf; // set the heapfile name
+  scanIsDone = 0; // 0 indicates that the scan is not finished yet
+  return firstDataPage(); // get the first page
 }
 
 // *******************************************
@@ -58,6 +61,28 @@ Status Scan::reset()
 Status Scan::firstDataPage()
 {
   // put your code here
+  Status status;
+  dirPageId = _hf->firstDirPageId;
+  scanIsDone = 0;
+
+  status = MINIBASE_BM->pinPage(dirPageId, (Page *&) dirPage);
+  if ( status != OK ) 
+    return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+
+  status = dirPage->firstRecord(dataPageRid);
+  if ( status != OK && status == DONE ) 
+    return DONE; // no record exists in the data page 
+
+  status = MINIBASE_BM->unpinPage(dirPageId);
+  if ( status != OK ) 
+    return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+
+  userRid = dataPageRid;
+
+  status = nextDataPage(); // check if next data page exists 
+  if ( status != OK ) 
+    return DONE; // only one file 
+
   return OK;
 }
 
@@ -72,5 +97,10 @@ Status Scan::nextDataPage(){
 // Retrieve the next directory page.
 Status Scan::nextDirPage() {
   // put your code here
+  dirPageId = dirPage->getNextPage();
+  if ( dirPageId == INVALID_PAGE ) {
+    return DONE; // reached the end of the file
+  }
   return OK;
 }
+ 
