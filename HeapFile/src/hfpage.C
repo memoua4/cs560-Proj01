@@ -3,7 +3,6 @@
 #include <memory.h>
 
 #include "../include/hfpage.h"
-#include "../include/heapfile.h"
 #include "../include/buf.h"
 #include "../include/db.h"
 
@@ -18,11 +17,13 @@ void HFPage::init(PageId pageNo)
     curPage = pageNo;
     prevPage = INVALID_PAGE;
     nextPage = INVALID_PAGE;
-    // initialize slotCnt starts at index 2 since index 1 is already occupied 
+    // initialize slotCnt starts at index 2 since index 1 is already occupied
     slotCnt = 0;
-    // initialize usedPtr, points to the end of data arrayx  
+    // Initialize slot array
+    slot[0].length = INVALID_SLOT;
+    // initialize usedPtr, points to the end of data arrayx
     usedPtr = MAX_SPACE - DPFIXED;
-    // initialize freeSpace, it is equivalent to the fixed number of space in the data array 
+    // initialize freeSpace, it is equivalent to the fixed number of space in the data array
     freeSpace = MAX_SPACE - DPFIXED;
 }
 
@@ -87,6 +88,7 @@ Status HFPage::insertRecord(char *recPtr, int recLen, RID &rid)
         if (slot[i].length == EMPTY_SLOT)
             break;
     }
+
     rid.pageNo = curPage;
     rid.slotNo = i;
     usedPtr -= recLen;
@@ -108,30 +110,43 @@ Status HFPage::deleteRecord(const RID &rid)
     // fill in the body
     if (rid.pageNo != curPage)
         return FAIL;
-    int no = rid.pageNo;
+    int no = rid.slotNo;
+    if (no < 0 || no > slotCnt)
+        return FAIL;
     int offset = slot[no].offset;
-    int len = slot[no].length;
+    int deletedRecLen = slot[no].length;
 
     // reset all the flag and free the struct
     slot[no].offset = -1;
     slot[no].length = EMPTY_SLOT;
 
-    // shift all the records to the right 
-    int dest = usedPtr + len;
-    memmove(data + dest, data, offset);
+    // shift all the records to the right
+    char * destination = data + usedPtr + deletedRecLen;
+    char * source = data + usedPtr;
+    size_t numBytes = offset - usedPtr;
+    memmove(destination, source, numBytes);
 
-    // adjust where the usedPtr now points 
-    usedPtr += len;
+
+    // adjust where the usedPtr now points
+    usedPtr = usedPtr + deletedRecLen;
     // since the record is deleted, add the available memory back to the freeSpace
-    freeSpace += len;
+    freeSpace = freeSpace + deletedRecLen;
     // adjust all the offset for slot[rid->slot] who is not empty
     // and its offset must be less than the original offset of the deleted record
-    for (int i = 0; i < slotCnt; i++)
+    for (int i = 0; i <= slotCnt; i++)
     {
         if (slot[i].length != EMPTY_SLOT && slot[i].offset < offset)
         {
-            slot[i].offset += len;
+            slot[i].offset += deletedRecLen;
         }
+    }
+    // Make sure to grab the extra space back after deletion from the end of the slot array
+    for (int i = slotCnt; i >= 0; i--)
+    {
+        if (slot[i].length != EMPTY_SLOT)
+            break;
+        slotCnt = slotCnt - 1;
+        freeSpace =  freeSpace + sizeof(slot_t);
     }
     return OK;
 }
@@ -150,7 +165,7 @@ Status HFPage::firstRecord(RID &firstRid)
             return OK;
         }
     }
-    return DONE;   // this indicates that no record exists 
+    return DONE;   // this indicates that no record exists
 }
 
 // **********************************************************
@@ -164,7 +179,7 @@ Status HFPage::nextRecord(RID curRid, RID &nextRid)
         return FAIL;
     if (slot[curNo].length == EMPTY_SLOT)
         return FAIL;
-    if (curNo >= slotCnt)
+    if (curNo < 0 || curNo > slotCnt)
         return FAIL;
 
     for (int i = curNo + 1; i <= slotCnt; i++)
@@ -237,6 +252,3 @@ bool HFPage::empty(void)
     }
     return true;
 }
-
-
-
