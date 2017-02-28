@@ -102,20 +102,22 @@ Status Scan::firstDataPage()
   Status status;
   dirPageId = _hf->firstDirPageId;
   scanIsDone = 0;
+  dataPage = NULL;
+  nxtUserStatus = OK;
 
-  status = MINIBASE_BM->pinPage(dirPageId, (Page *&) dirPage);
-  if ( status != OK ) 
-    return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+  // status = MINIBASE_BM->pinPage(dirPageId, (Page *&) dirPage);
+  // if ( status != OK ) 
+  //   return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
 
-  status = dirPage->firstRecord(dataPageRid);
-  if ( status != OK && status == DONE ) 
-    return DONE; // no record exists in the data page 
+  // status = dirPage->firstRecord(dataPageRid);
+  // if ( status != OK && status == DONE ) 
+  //   return DONE; // no record exists in the data page 
 
-  status = MINIBASE_BM->unpinPage(dirPageId);
-  if ( status != OK ) 
-    return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+  // status = MINIBASE_BM->unpinPage(dirPageId);
+  // if ( status != OK ) 
+  //   return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
 
-  userRid = dataPageRid;
+  // userRid = dataPageRid;
 
   status = nextDataPage(); // check if next data page exists 
   if ( status != OK ) 
