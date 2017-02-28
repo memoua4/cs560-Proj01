@@ -154,83 +154,53 @@ Status HeapFile::insertRecord(char *recPtr, int recLen, RID &outRid)
 {
     HFPage *dirPage; 
     PageId dirPageId = firstDirPageId;
-    PageId prevDirPageId;
+    PageId nextDirPageId;
     RID dirRecId;
-    PageId dataPageId = INVALID_PAGE;
+    PageId dataPageId;
     HFPage *dataPage;
-    PageId prevDataPageId;
-    DataPageInfo *dpinfop = new DataPageInfo;
-    Status status;
+    DataPageInfo *dataPageInfo = new DataPageInfo();
 
-    while (true) {
-        MINIBASE_BM->pinPage(dirPageId, (Page *&)dirPage);
+    // This loop tests for the pages we already have
+    while (dirPageId != INVALID_PAGE) {
+        MINIBASE_BM->pinPage(dirPageId, (Page *&) dirPage);
 
-        Status firstStatus = dirPage->firstRecord(dirRecId);
-    
-        while ( true ) {
-            if ( status != OK ) {
-                break;
-            }
-            MINIBASE_BM->pinPage(dirRecId.pageNo, (Page *&)dataPage);
-            if ( dataPage->available_space() >= recLen ) {
-                dataPageId = dirRecId.pageNo;
-                break;
-            }
-            prevDataPageId = dirRecId.pageNo;
-            MINIBASE_BM->unpinPage(dirRecId.pageNo);
-            status = dirPage->nextRecord(dirRecId, dirRecId);
+        // Grab the first record
+        Status gotFirst =  dirPage->firstRecord(dirRecId);
+
+        if (gotFirst == OK) {
+            // Loop through each of the directory DataPageInfo structs
+            do {
+                int tempLen;
+                dirPage->returnRecord(dirRecId, (char *&) dataPageInfo, tempLen);
+                // If one has enough space, insert into it
+                if (dataPageInfo->availspace >= recLen) {
+                    dataPageId = dataPageInfo->pageId;
+                    MINIBASE_BM->pinPage(dataPageId, (Page *&) dataPage);
+                    dataPage->insertRecord(recPtr, recLen, outRid);
+                    dataPage->dumpPage();
+                    dataPageInfo->availspace = dataPage->available_space();
+                    MINIBASE_BM->unpinPage(dataPageId);
+                    MINIBASE_BM->unpinPage(dirPageId);
+                    return OK;
+                }
+            } while (dirPage->nextRecord(dirRecId, dirRecId) == OK);
         }
-        if ( dataPageId != INVALID_PAGE ) {
-            MINIBASE_BM->pinPage(dataPageId, (Page *&)dataPage);
-            status = dataPage->insertRecord(recPtr, recLen, outRid);
-            MINIBASE_BM->unpinPage(dataPageId);
-            return OK;
-        } else {
-            if (dirPage->available_space() >= recLen) {
-                newDataPage(dpinfop);
-                dataPageId = dpinfop->pageId;
-                if (firstStatus == DONE) {
-                    MINIBASE_BM->pinPage(prevDataPageId, (Page *&)dataPage);
-                    dataPage->setNextPage(dataPageId);
-                    MINIBASE_BM->unpinPage(prevDataPageId);
-                }
 
-                MINIBASE_BM->pinPage(dataPageId, (Page *&)dataPage);
-                dataPage->setPrevPage(prevDataPageId);
-                cout << "Here I am...." << dataPage->available_space() << endl;
-                status = dataPage->insertRecord(recPtr, recLen, outRid);
-                if ( status != OK ) {
-                    cout << "Cannot insert for some reason...." << endl;
-                    return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
-                }
-                MINIBASE_BM->unpinPage(dataPageId);
-                break;
-            } else {
-                prevDirPageId = dirPageId;
-                dirPageId = dirPage->getNextPage();
-                if ( dirPageId == INVALID_PAGE ) {
-                    MINIBASE_BM->unpinPage(prevDirPageId);
-                    allocateDirSpace(dpinfop, prevDirPageId, dirRecId);
-                    dataPageId = dpinfop->pageId;
-                    // insert here
-                    MINIBASE_BM->pinPage(prevDirPageId, (Page *&)dirPage);
-                    MINIBASE_BM->pinPage(dirRecId.pageNo, (Page *&)dataPage);
-                    status = dataPage->insertRecord(recPtr, recLen, outRid);
-                    if ( status != OK ) {
-                        cout << "cannot insert for some othe reason...." << endl;
-                        return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
-                    }
-                    MINIBASE_BM->unpinPage(dirRecId.pageNo);
-                    MINIBASE_BM->unpinPage(prevDirPageId);
-                    break;
-                } else {
-                    MINIBASE_BM->unpinPage(prevDirPageId);
-                    MINIBASE_BM->pinPage(dirPageId, (Page *&)dirPage);
-                }
-            }
-        }
+        nextDirPageId = dirPage->getNextPage();
+        MINIBASE_BM->unpinPage(dirPageId);
+        dirPageId = nextDirPageId;
     }
 
+    // Need a new data page, so allocate one
+    newDataPage(dataPageInfo);
+    RID temp;
+    allocateDirSpace(dataPageInfo, dirPageId, temp);
+
+    dataPageId = dataPageInfo->pageId;
+    MINIBASE_BM->pinPage(dataPageId, (Page *&) dataPage);
+    dataPage->insertRecord(recPtr, recLen, outRid);
+    MINIBASE_BM->unpinPage(dataPageId);
+    MINIBASE_BM->unpinPage(dirPageId);
 
     return OK;
 }
@@ -401,6 +371,8 @@ Status HeapFile::newDataPage(DataPageInfo *dpinfop)
     dpinfop->availspace = hfpage.available_space();
     dpinfop->recct = 0;
     dpinfop->pageId = newPageId;
+
+    MINIBASE_BM->unpinPage(newPageId);
    
     return OK;
 }
@@ -473,37 +445,49 @@ Status HeapFile::findDataPage(const RID &rid, PageId &rpDirPageId, HFPage *&rpdi
 
 // *********************************************************************
 // Allocate directory space for a heap file page 
-Status HeapFile::allocateDirSpace(struct DataPageInfo * dpinfop,
+Status HeapFile::allocateDirSpace(struct DataPageInfo * dataPageInfoPtr,
                             PageId &allocDirPageId,
                             RID &allocDataPageRid)
 {
-    // // fill in the body
-    Page * newDirPage;
-    PageId newDirPageId;
+    PageId currentPageID = firstDirPageId;
+    PageId lastPageID;
+    HFPage * currentPage;
+    HFPage * lastPage;
 
-    MINIBASE_BM->newPage(newDirPageId, newDirPage);
-    HFPage * dirPage = (HFPage *) newDirPage;
-    dirPage->init(newDirPageId);
-    dirPage->setPrevPage(allocDirPageId);
+    while (currentPageID != INVALID_PAGE) {
+        MINIBASE_BM->pinPage(currentPageID, (Page *&) currentPage);
 
-    dpinfop->availspace = dirPage->available_space();
-    dpinfop->recct = 0;
-    dpinfop->pageId = newDirPageId;
+        RID insertRID;
+        Status insertSuccessful = currentPage->insertRecord((char *) dataPageInfoPtr, sizeof(DataPageInfo), insertRID);
+        if (insertSuccessful == OK) {
+            allocDirPageId = currentPageID;
+            allocDataPageRid = insertRID;
+            MINIBASE_BM->unpinPage(currentPageID, true);
+            return OK;
+        }
 
-    DataPageInfo *info = new DataPageInfo;
-    newDataPage(info);
-    allocDataPageRid.pageNo = info->pageId;
-    allocDataPageRid.slotNo = info->recct;
+        lastPageID = currentPageID;
+        currentPageID = currentPage->getNextPage();
+        MINIBASE_BM->unpinPage(lastPageID);
+    }
 
-    HFPage curDirPage;
-    MINIBASE_BM->pinPage(allocDirPageId, (Page *&)curDirPage);
-    curDirPage.setNextPage(newDirPageId);
-    MINIBASE_BM->unpinPage(allocDirPageId);
+    // If we get here, we need a new dir page
+    MINIBASE_BM->newPage(currentPageID, (Page *&) currentPage);
+    currentPage->init(currentPageID);
+    currentPage->setPrevPage(lastPageID);
 
-    allocDirPageId = newDirPageId; // set new page 
+    // Update the previous page to point to the new page
+    MINIBASE_BM->pinPage(lastPageID, (Page *&) lastPage);
+    lastPage->setNextPage(currentPageID);
+    MINIBASE_BM->unpinPage(lastPageID);
 
+    // Insert into the new page MUST be successful
+    RID insertRID;
+    currentPage->insertRecord((char *) dataPageInfoPtr, sizeof(DataPageInfo), insertRID);
+    allocDirPageId = currentPageID;
+    allocDataPageRid = insertRID;
+    MINIBASE_BM->unpinPage(currentPageID, true);
     return OK;
-
 }
 
 // *******************************************
