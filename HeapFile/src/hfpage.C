@@ -37,7 +37,7 @@ void HFPage::dumpPage()
     cout << "curPage= " << curPage << ", nextPage=" << nextPage << endl;
     cout << "usedPtr=" << usedPtr << ",  freeSpace=" << freeSpace << ", slotCnt=" << slotCnt << endl;
 
-    for (i = 0; i < slotCnt; i++)
+    for (i = 0; i <= slotCnt; i++)
     {
         cout << "slot[" << i << "].offset=" << slot[i].offset << ", slot[" << i << "].length=" << slot[i].length
              << endl;

@@ -32,7 +32,7 @@ static const int reclen = sizeof(Rec);
 
 HeapDriver::HeapDriver() : TestDriver( "hftest" )
 {
-   choice = 5;   // big enough for file to occupy > 1 directory page
+   choice = 28;   // big enough for file to occupy > 1 directory page
   
 }
 
@@ -112,6 +112,7 @@ int HeapDriver::test1()
           }
       }
 
+    cout << "Finished inserting" << endl;
 
       // In general, a sequential scan won't be in the same order as the
       // insertions.  However, we're inserting fixed-length records here, and

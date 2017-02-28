@@ -107,7 +107,7 @@ int HeapFile::getRecCnt()
         MINIBASE_BM->pinPage(currentPageID, (Page *&) currentPage);
 
         // Load the first record on the page
-        DataPageInfo *currentInfo;
+        DataPageInfo *currentInfo = new DataPageInfo();
         RID currentRID;
         Status retStatus = currentPage->firstRecord(currentRID);
         if (retStatus == OK)
@@ -120,6 +120,16 @@ int HeapFile::getRecCnt()
                 currentPage->getRecord(currentRID, (char *) currentInfo, length);
                 // Accumulate to the total
                 totalRecordCount = totalRecordCount + currentInfo->recct;
+
+                /*
+
+                HFPage * temp;
+                MINIBASE_BM->pinPage(currentInfo->pageId, (Page *&) temp);
+                temp->dumpPage();
+                MINIBASE_BM->unpinPage(currentInfo->pageId);
+
+                */
+
             } while (currentPage->nextRecord(currentRID, currentRID) == OK);
         }
 
@@ -177,8 +187,8 @@ Status HeapFile::insertRecord(char *recPtr, int recLen, RID &outRid)
                     dataPageId = dataPageInfo->pageId;
                     MINIBASE_BM->pinPage(dataPageId, (Page *&) dataPage);
                     dataPage->insertRecord(recPtr, recLen, outRid);
-                    dataPage->dumpPage();
                     dataPageInfo->availspace = dataPage->available_space();
+                    dataPageInfo->recct++;
                     MINIBASE_BM->unpinPage(dataPageId);
                     MINIBASE_BM->unpinPage(dirPageId);
                     return OK;
@@ -196,9 +206,14 @@ Status HeapFile::insertRecord(char *recPtr, int recLen, RID &outRid)
     RID temp;
     allocateDirSpace(dataPageInfo, dirPageId, temp);
 
+
     dataPageId = dataPageInfo->pageId;
     MINIBASE_BM->pinPage(dataPageId, (Page *&) dataPage);
     dataPage->insertRecord(recPtr, recLen, outRid);
+    int tempLen;
+    dirPage->returnRecord(temp, (char *&) dataPageInfo, tempLen);
+    dataPageInfo->recct++;
+    dataPageInfo->availspace = dataPage->available_space();
     MINIBASE_BM->unpinPage(dataPageId);
     MINIBASE_BM->unpinPage(dirPageId);
 
@@ -358,17 +373,16 @@ Status HeapFile::newDataPage(DataPageInfo *dpinfop)
 {
     // fill in the body
     PageId newPageId;
-    Page *newPage;
-    Status status = MINIBASE_BM->newPage(newPageId, newPage); // create a new page
+    HFPage *newPage;
+    Status status = MINIBASE_BM->newPage(newPageId, (Page *&) newPage); // create a new page
 
     if ( status != OK ) {
         return MINIBASE_FIRST_ERROR(HEAPFILE, status);
     }
 
-    HFPage hfpage;
-    hfpage.init(newPageId);
+    newPage->init(newPageId);
 
-    dpinfop->availspace = hfpage.available_space();
+    dpinfop->availspace = newPage->available_space();
     dpinfop->recct = 0;
     dpinfop->pageId = newPageId;
 
