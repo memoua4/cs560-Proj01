@@ -79,7 +79,7 @@ void HFPage::setNextPage(PageId pageNo)
 Status HFPage::insertRecord(char *recPtr, int recLen, RID &rid)
 {
     // fill in the body
-    if ((recLen + sizeof(slot_t)) > freeSpace)
+    if (recLen > freeSpace)
         return DONE;
 
     int i;

@@ -77,14 +77,7 @@ HeapFile::HeapFile(const char *name, Status &returnStatus)
 // Destructor
 HeapFile::~HeapFile()
 {
-   // fill in the body
-    if ( file_deleted != 1 ) { // the file has not been deleted
-        Status status = deleteFile();
-
-        if ( status != OK ) {
-            return;
-        }
-    }
+    deleteFile();
 }
 
 
@@ -120,7 +113,6 @@ int HeapFile::getRecCnt()
                 currentPage->getRecord(currentRID, (char *) currentInfo, length);
                 // Accumulate to the total
                 totalRecordCount = totalRecordCount + currentInfo->recct;
-
             } while (currentPage->nextRecord(currentRID, currentRID) == OK);
         }
 
@@ -132,7 +124,6 @@ int HeapFile::getRecCnt()
 
     return totalRecordCount;
 }
-
 
 // *****************************
 // Insert a record into the file
@@ -153,7 +144,7 @@ int HeapFile::getRecCnt()
  */
 Status HeapFile::insertRecord(char *recPtr, int recLen, RID &outRid)
 {
-    HFPage *dirPage; 
+    HFPage *dirPage;
     PageId dirPageId = firstDirPageId;
     PageId nextDirPageId;
     RID dirRecId;
@@ -162,29 +153,33 @@ Status HeapFile::insertRecord(char *recPtr, int recLen, RID &outRid)
     DataPageInfo *dataPageInfo = new DataPageInfo();
 
     // This loop tests for the pages we already have
-    while (dirPageId != INVALID_PAGE) {
+    while (dirPageId != INVALID_PAGE)
+    {
         MINIBASE_BM->pinPage(dirPageId, (Page *&) dirPage);
 
         // Grab the first record
-        Status gotFirst =  dirPage->firstRecord(dirRecId);
+        Status gotFirst = dirPage->firstRecord(dirRecId);
 
-        if (gotFirst == OK) {
+        if (gotFirst == OK)
+        {
             // Loop through each of the directory DataPageInfo structs
-            do {
+            do
+            {
                 int tempLen;
                 // FIRST PERFORM A REGULAR GET RECORD
                 dirPage->getRecord(dirRecId, (char *&) dataPageInfo, tempLen);
                 // If one has enough space, insert into it
-                if (dataPageInfo->availspace >= recLen) {
+                if (dataPageInfo->availspace >= recLen)
+                {
                     // if we got it, use RETURN RECORD to get access to the actual memeory
                     dirPage->returnRecord(dirRecId, (char *&) dataPageInfo, tempLen);
                     dataPageId = dataPageInfo->pageId;
                     MINIBASE_BM->pinPage(dataPageId, (Page *&) dataPage);
-                    dataPage->insertRecord(recPtr, recLen, outRid);
+                    Status status = dataPage->insertRecord(recPtr, recLen, outRid);
                     dataPageInfo->availspace = dataPage->available_space();
                     dataPageInfo->recct++;
-                    MINIBASE_BM->unpinPage(dataPageId);
-                    MINIBASE_BM->unpinPage(dirPageId);
+                    MINIBASE_BM->unpinPage(dataPageId, true);
+                    MINIBASE_BM->unpinPage(dirPageId, true);
                     return OK;
                 }
             } while (dirPage->nextRecord(dirRecId, dirRecId) == OK);
@@ -197,17 +192,19 @@ Status HeapFile::insertRecord(char *recPtr, int recLen, RID &outRid)
 
     // Need a new data page, so allocate one
     newDataPage(dataPageInfo);
-    RID temp;
-    allocateDirSpace(dataPageInfo, dirPageId, temp);
+    allocateDirSpace(dataPageInfo, dirPageId, dirRecId);
+    MINIBASE_BM->pinPage(dirPageId, (Page *&) dirPage);
 
 
     dataPageId = dataPageInfo->pageId;
     MINIBASE_BM->pinPage(dataPageId, (Page *&) dataPage);
-    dataPage->insertRecord(recPtr, recLen, outRid);
     int tempLen;
-    RID first;
-    dirPage->firstRecord(first);
-    dirPage->returnRecord(first, (char *&) dataPageInfo, tempLen);
+    dataPage->insertRecord(recPtr, recLen, outRid);
+    MINIBASE_BM->unpinPage(dataPageId, true);
+    dataPage = NULL;
+
+    MINIBASE_BM->pinPage(dataPageId, (Page *&) dataPage);
+    dirPage->returnRecord(dirRecId, (char *&) dataPageInfo, tempLen);
     dataPageInfo->recct++;
     dataPageInfo->availspace = dataPage->available_space();
     MINIBASE_BM->unpinPage(dataPageId, true);
@@ -259,25 +256,25 @@ Status HeapFile::updateRecord(const RID &rid, char *recPtr, int recLen)
 
     Status status = findDataPage(rid, rpDirPageId, rpdirpage, rpDataPageId, rpdatapage, rpDataPageRid);
 
-    if ( status != OK ) 
+    if (status != OK)
         return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
 
     char *foundRec = NULL;
     int foundLen;
 
     status = MINIBASE_BM->pinPage(rpDataPageId, (Page *&) rpdatapage);
-    if ( status != OK ) 
+    if (status != OK)
         return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
 
     status = rpdatapage->getRecord(rid, foundRec, foundLen);
-    if ( status != OK ) 
+    if (status != OK)
         return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
 
-    status =  MINIBASE_BM->unpinPage(rpDataPageId);
-    if ( status != OK ) 
+    status = MINIBASE_BM->unpinPage(rpDataPageId);
+    if (status != OK)
         return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
 
-    if (recLen != foundLen) 
+    if (recLen != foundLen)
         return FAIL;
 
     memcpy(recPtr, foundRec, recLen);
@@ -308,8 +305,8 @@ Status HeapFile::getRecord(const RID &rid, char *recPtr, int &recLen)
 // initiate a sequential scan
 Scan *HeapFile::openScan(Status &status)
 {
-  // fill in the body 
-    Scan * scan =  new Scan(this, status);
+    // fill in the body
+    Scan *scan = new Scan(this, status);
     return scan;
 }
 
@@ -360,6 +357,8 @@ Status HeapFile::deleteFile()
     if (status != OK)
         return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
 
+    free(fileName);
+
     return OK;
 }
 
@@ -373,7 +372,8 @@ Status HeapFile::newDataPage(DataPageInfo *dpinfop)
     HFPage *newPage;
     Status status = MINIBASE_BM->newPage(newPageId, (Page *&) newPage); // create a new page
 
-    if ( status != OK ) {
+    if (status != OK)
+    {
         return MINIBASE_FIRST_ERROR(HEAPFILE, status);
     }
 
@@ -384,7 +384,7 @@ Status HeapFile::newDataPage(DataPageInfo *dpinfop)
     dpinfop->pageId = newPageId;
 
     MINIBASE_BM->unpinPage(newPageId);
-   
+
     return OK;
 }
 
@@ -456,21 +456,21 @@ Status HeapFile::findDataPage(const RID &rid, PageId &rpDirPageId, HFPage *&rpdi
 
 // *********************************************************************
 // Allocate directory space for a heap file page 
-Status HeapFile::allocateDirSpace(struct DataPageInfo * dataPageInfoPtr,
-                            PageId &allocDirPageId,
-                            RID &allocDataPageRid)
+Status HeapFile::allocateDirSpace(struct DataPageInfo *dataPageInfoPtr, PageId &allocDirPageId, RID &allocDataPageRid)
 {
     PageId currentPageID = firstDirPageId;
-    PageId lastPageID;
-    HFPage * currentPage;
-    HFPage * lastPage;
+    PageId lastPageID = INVALID_PAGE;
+    HFPage *currentPage;
+    HFPage *lastPage;
 
-    while (currentPageID != INVALID_PAGE) {
+    while (currentPageID != INVALID_PAGE)
+    {
         MINIBASE_BM->pinPage(currentPageID, (Page *&) currentPage);
 
         RID insertRID;
         Status insertSuccessful = currentPage->insertRecord((char *) dataPageInfoPtr, sizeof(DataPageInfo), insertRID);
-        if (insertSuccessful == OK) {
+        if (insertSuccessful == OK)
+        {
             allocDirPageId = currentPageID;
             allocDataPageRid = insertRID;
             MINIBASE_BM->unpinPage(currentPageID, true);
@@ -482,22 +482,24 @@ Status HeapFile::allocateDirSpace(struct DataPageInfo * dataPageInfoPtr,
         MINIBASE_BM->unpinPage(lastPageID);
     }
 
+    PageId newPageId;
+
     // If we get here, we need a new dir page
-    MINIBASE_BM->newPage(currentPageID, (Page *&) currentPage);
-    currentPage->init(currentPageID);
+    MINIBASE_BM->newPage(newPageId, (Page *&) currentPage);
+    currentPage->init(newPageId);
     currentPage->setPrevPage(lastPageID);
 
     // Update the previous page to point to the new page
     MINIBASE_BM->pinPage(lastPageID, (Page *&) lastPage);
-    lastPage->setNextPage(currentPageID);
+    lastPage->setNextPage(newPageId);
     MINIBASE_BM->unpinPage(lastPageID, true);
+    MINIBASE_BM->unpinPage(newPageId, true);
 
     // Insert into the new page MUST be successful
     RID insertRID;
     currentPage->insertRecord((char *) dataPageInfoPtr, sizeof(DataPageInfo), insertRID);
-    allocDirPageId = currentPageID;
+    allocDirPageId = newPageId;
     allocDataPageRid = insertRID;
-    MINIBASE_BM->unpinPage(currentPageID, true);
     return OK;
 }
 

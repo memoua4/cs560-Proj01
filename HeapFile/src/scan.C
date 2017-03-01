@@ -35,26 +35,32 @@ Status Scan::getNext(RID &rid, char *recPtr, int &recLen)
 {
     Status status;
 
+
     // Check if we have a valid datapage to grab from
     if (nxtUserStatus != OK)
     {
         status = nextDataPage();
-        if (status != OK)
+        if (status == DONE) {
+            return DONE;
+        }
+        else if (status != OK) {
             return MINIBASE_CHAIN_ERROR(SCAN, status);
+        }
     }
 
     // Grab all the other data we need to return
     // This will fill in recPtr and recLen
     status = dataPage->getRecord(userRid, recPtr, recLen);
-    if (status != OK)
+    if (status != OK) {
         return MINIBASE_CHAIN_ERROR(SCAN, status);
+    }
 
     // Fill in rid
     rid = userRid;
 
     // Move userRid to the next location, and put that result into the nxtUserStatus
     // variable indicating if we have another record
-    nxtUserStatus = dataPage->nextRecord(rid, userRid);
+    nxtUserStatus = dataPage->nextRecord(userRid, userRid);
 
     return status;
 }
@@ -144,6 +150,7 @@ Status Scan::nextDataPage()
         Status gotFirst = dataPage->firstRecord(userRid);
         // If we got a first record, just return it
         if (gotFirst == OK) return OK;
+        else if (gotFirst == DONE) return DONE;
         else return MINIBASE_CHAIN_ERROR(SCAN, gotFirst);
     }
 
@@ -185,11 +192,9 @@ Status Scan::nextDataPage()
     dataPageId = info->pageId;
     // Set the new dataPage
     MINIBASE_BM->pinPage(dataPageId, (Page *&) dataPage);
-    // Set the userRid
+
     dataPage->firstRecord(userRid);
-    // Set nxtUserStatus
-    RID temp;
-    nxtUserStatus = dataPage->nextRecord(userRid, temp);
+    nxtUserStatus = OK;
 
     return OK;
 }
@@ -198,12 +203,14 @@ Status Scan::nextDataPage()
 // Retrieve the next directory page.
 Status Scan::nextDirPage()
 {
-    // put your code here
+    PageId oldDirPage = dirPageId;
     dirPageId = dirPage->getNextPage();
+    MINIBASE_BM->unpinPage(oldDirPage);
     if (dirPageId == INVALID_PAGE)
     {
         return DONE; // reached the end of the file
     }
+    MINIBASE_BM->pinPage(dirPageId, (Page *&) dirPage);
     return OK;
 }
  
