@@ -79,24 +79,26 @@ Status Scan::init(HeapFile *hf)
 // Reset everything and unpin all pages.
 Status Scan::reset()
 {
-    Status status;
-
     if (dataPage != NULL)
     {
-        // Unpin the dataPage
-        MINIBASE_BM->unpinPage(dataPageId);
         dataPage = NULL;
+    }
+    if (dataPageId != INVALID_PAGE) {
+        MINIBASE_BM->unpinPage(dataPageId);
         dataPageId = 0;
     }
     if (dirPage != NULL)
     {
         // Unpin the dirPage
-        MINIBASE_BM->unpinPage(dirPageId);
         dirPage = NULL;
-        dirPageId = 0;
+    }
+    if (dirPageId != INVALID_PAGE) {
+        MINIBASE_BM->unpinPage(dirPageId);
+        dirPageId = _hf->firstDirPageId;
     }
     scanIsDone = false;
     nxtUserStatus = OK;
+    return OK;
 }
 
 // *******************************************
@@ -156,6 +158,7 @@ Status Scan::nextDataPage()
 
     // Unpin the current data page
     MINIBASE_BM->unpinPage(dataPageId);
+    dataPageId = INVALID_PAGE;
 
     // Retrieve the next DataPageInfo
     RID nextDataPageInfoRID;

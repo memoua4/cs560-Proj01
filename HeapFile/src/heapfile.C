@@ -18,7 +18,8 @@ HeapFile::HeapFile(const char *name, Status &returnStatus)
     // If we're making a temporary directory, use the file name "temp"
     if (name == NULL)
     {
-        fileName = (char *) "tempX";
+        fileName = new char[10];
+        strcpy(fileName, "XtempX");
     } else
     {
         fileName = new char[strlen(name) + 1];
@@ -32,7 +33,6 @@ HeapFile::HeapFile(const char *name, Status &returnStatus)
     if (name != NULL)
     {
         status = MINIBASE_DB->get_file_entry(fileName, firstDirPageId);
-        cout << firstDirPageId << endl;
     } else
         status = OK;
 
@@ -98,8 +98,6 @@ int HeapFile::getRecCnt()
     // Go through each directory page
     while (currentPageID != INVALID_PAGE)
     {
-        Status status;
-
         // Pin the directory page
         MINIBASE_BM->pinPage(currentPageID, (Page *&) currentPage);
 
@@ -179,7 +177,7 @@ Status HeapFile::insertRecord(char *recPtr, int recLen, RID &outRid)
                     dirPage->returnRecord(dirRecId, (char *&) dataPageInfo, tempLen);
                     dataPageId = dataPageInfo->pageId;
                     MINIBASE_BM->pinPage(dataPageId, (Page *&) dataPage);
-                    Status status = dataPage->insertRecord(recPtr, recLen, outRid);
+                    dataPage->insertRecord(recPtr, recLen, outRid);
                     dataPageInfo->availspace = dataPage->available_space();
                     dataPageInfo->recct++;
                     MINIBASE_BM->unpinPage(dataPageId, true);
@@ -356,8 +354,6 @@ Status HeapFile::deleteFile()
     status = MINIBASE_DB->delete_file_entry(fileName);
     if (status != OK)
         return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
-
-    free(fileName);
 
     return OK;
 }

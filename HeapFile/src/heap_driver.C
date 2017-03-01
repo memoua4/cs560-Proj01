@@ -85,7 +85,7 @@ int HeapDriver::test1()
         cout << "  - Add " << choice << " records to the file\n";
         for (int i = 0; (i < choice) && (status == OK); i++)
         {
-            Rec rec = {i, i * 2.5};
+            Rec rec = {i, (float) (i * 2.5)};
             sprintf(rec.name, "record %i", i);
 
             status = f.insertRecord((char *) &rec, reclen, rid);
@@ -111,6 +111,7 @@ int HeapDriver::test1()
     // In general, a sequential scan won't be in the same order as the
     // insertions.  However, we're inserting fixed-length records here, and
     // in this case the scan must return the insertion order.
+
 
     Scan *scan = 0;
     if (status == OK)
