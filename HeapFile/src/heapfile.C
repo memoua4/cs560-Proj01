@@ -121,15 +121,6 @@ int HeapFile::getRecCnt()
                 // Accumulate to the total
                 totalRecordCount = totalRecordCount + currentInfo->recct;
 
-                /*
-
-                HFPage * temp;
-                MINIBASE_BM->pinPage(currentInfo->pageId, (Page *&) temp);
-                temp->dumpPage();
-                MINIBASE_BM->unpinPage(currentInfo->pageId);
-
-                */
-
             } while (currentPage->nextRecord(currentRID, currentRID) == OK);
         }
 
@@ -181,9 +172,12 @@ Status HeapFile::insertRecord(char *recPtr, int recLen, RID &outRid)
             // Loop through each of the directory DataPageInfo structs
             do {
                 int tempLen;
-                dirPage->returnRecord(dirRecId, (char *&) dataPageInfo, tempLen);
+                // FIRST PERFORM A REGULAR GET RECORD
+                dirPage->getRecord(dirRecId, (char *&) dataPageInfo, tempLen);
                 // If one has enough space, insert into it
                 if (dataPageInfo->availspace >= recLen) {
+                    // if we got it, use RETURN RECORD to get access to the actual memeory
+                    dirPage->returnRecord(dirRecId, (char *&) dataPageInfo, tempLen);
                     dataPageId = dataPageInfo->pageId;
                     MINIBASE_BM->pinPage(dataPageId, (Page *&) dataPage);
                     dataPage->insertRecord(recPtr, recLen, outRid);
@@ -214,8 +208,9 @@ Status HeapFile::insertRecord(char *recPtr, int recLen, RID &outRid)
     dirPage->returnRecord(temp, (char *&) dataPageInfo, tempLen);
     dataPageInfo->recct++;
     dataPageInfo->availspace = dataPage->available_space();
-    MINIBASE_BM->unpinPage(dataPageId);
-    MINIBASE_BM->unpinPage(dirPageId);
+    MINIBASE_BM->unpinPage(dataPageId, true);
+    MINIBASE_BM->unpinPage(dirPageId, true);
+
 
     return OK;
 }
@@ -493,7 +488,7 @@ Status HeapFile::allocateDirSpace(struct DataPageInfo * dataPageInfoPtr,
     // Update the previous page to point to the new page
     MINIBASE_BM->pinPage(lastPageID, (Page *&) lastPage);
     lastPage->setNextPage(currentPageID);
-    MINIBASE_BM->unpinPage(lastPageID);
+    MINIBASE_BM->unpinPage(lastPageID, true);
 
     // Insert into the new page MUST be successful
     RID insertRID;
