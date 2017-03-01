@@ -17,8 +17,7 @@
 // and initializes its private data members from the private data members from hf
 Scan::Scan (HeapFile *hf, Status& status)
 {
-  // put your code here
-  status = OK;
+  status = init(hf);
 }
 
 // *******************************************

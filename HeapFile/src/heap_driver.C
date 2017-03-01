@@ -33,7 +33,6 @@ static const int reclen = sizeof(Rec);
 HeapDriver::HeapDriver() : TestDriver( "hftest" )
 {
    choice = 2000;   // big enough for file to occupy > 1 directory page
-  
 }
 
 HeapDriver::~HeapDriver()
