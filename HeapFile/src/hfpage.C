@@ -177,9 +177,11 @@ Status HFPage::nextRecord(RID curRid, RID &nextRid)
     int curNo = curRid.slotNo;
     if (curRid.pageNo != curPage)
         return FAIL;
-    if (slot[curNo].length == EMPTY_SLOT)
+    if (curNo < 0)
         return FAIL;
-    if (curNo < 0 || curNo > slotCnt)
+    if (curNo > slotCnt)
+        return DONE;
+    if (slot[curNo].length == EMPTY_SLOT)
         return FAIL;
 
     for (int i = curNo + 1; i <= slotCnt; i++)

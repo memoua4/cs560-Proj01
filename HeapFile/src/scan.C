@@ -40,10 +40,11 @@ Status Scan::getNext(RID &rid, char *recPtr, int &recLen)
     if (nxtUserStatus != OK)
     {
         status = nextDataPage();
-        if (status == DONE) {
+        if (status == DONE)
+        {
             return DONE;
-        }
-        else if (status != OK) {
+        } else if (status != OK)
+        {
             return MINIBASE_CHAIN_ERROR(SCAN, status);
         }
     }
@@ -51,7 +52,8 @@ Status Scan::getNext(RID &rid, char *recPtr, int &recLen)
     // Grab all the other data we need to return
     // This will fill in recPtr and recLen
     status = dataPage->getRecord(userRid, recPtr, recLen);
-    if (status != OK) {
+    if (status != OK)
+    {
         return MINIBASE_CHAIN_ERROR(SCAN, status);
     }
 
@@ -83,7 +85,8 @@ Status Scan::reset()
     {
         dataPage = NULL;
     }
-    if (dataPageId != INVALID_PAGE) {
+    if (dataPageId != INVALID_PAGE)
+    {
         MINIBASE_BM->unpinPage(dataPageId);
         dataPageId = 0;
     }
@@ -92,7 +95,8 @@ Status Scan::reset()
         // Unpin the dirPage
         dirPage = NULL;
     }
-    if (dirPageId != INVALID_PAGE) {
+    if (dirPageId != INVALID_PAGE)
+    {
         MINIBASE_BM->unpinPage(dirPageId);
         dirPageId = _hf->firstDirPageId;
     }

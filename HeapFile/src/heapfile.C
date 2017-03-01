@@ -239,6 +239,10 @@ Status HeapFile::deleteRecord(const RID &rid)
         if (dataEmpty)
             MINIBASE_BM->freePage(dataPageID);
     }
+    else
+    {
+        return status;
+    }
 
     return OK;
 }
@@ -401,6 +405,7 @@ Status HeapFile::findDataPage(const RID &rid, PageId &rpDirPageId, HFPage *&rpdi
     HFPage *currentDirPage;
     PageId currentDirPageID = firstDirPageId;
 
+
     // Loop through each directory page in the linked list
     while (currentDirPageID != INVALID_PAGE)
     {
@@ -416,11 +421,12 @@ Status HeapFile::findDataPage(const RID &rid, PageId &rpDirPageId, HFPage *&rpdi
             return MINIBASE_FIRST_ERROR(HEAPFILE, RECNOTFOUND);
         }
 
+        DataPageInfo *pageInfo = new DataPageInfo();
+
         // Loop through each record in the directory page
         do
         {
             // Load the record from the directory page
-            DataPageInfo *pageInfo = new DataPageInfo();
             int count;
             currentDirPage->getRecord(currentDirRecord, (char *) pageInfo, count);
 
@@ -429,18 +435,21 @@ Status HeapFile::findDataPage(const RID &rid, PageId &rpDirPageId, HFPage *&rpdi
             {
                 // If it is, fill in all parameters and return
                 rpDataPageId = pageInfo->pageId;
-                MINIBASE_BM->pinPage(pageInfo->pageId, (Page *&) *rpdatapage);
+                MINIBASE_BM->pinPage(rpDataPageId, (Page *&) rpdatapage);
                 rpDirPageId = currentDirPageID;
                 rpdirpage = currentDirPage;
                 rpDataPageRid = currentDirRecord;
+                delete pageInfo;
                 return OK;
             }
+        } while (currentDirPage->nextRecord(currentDirRecord, currentDirRecord) == OK);
 
-        } while (currentDirPage->nextRecord(currentDirRecord, currentDirRecord) != OK);
+        delete pageInfo;
 
         PageId old = currentDirPageID;
         // Move on to the next page
         currentDirPageID = currentDirPage->getNextPage();
+        currentDirPage = NULL;
         // Unpin the previous page
         MINIBASE_BM->unpinPage(old);
     }

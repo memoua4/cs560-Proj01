@@ -215,11 +215,9 @@ int HeapDriver::test2()
 
         while ((status = scan->getNext(rid, (char *) &rec, len)) == OK)
         {
-            //cout << "i is " << i << endl;
-            //cout << "rid is " << rid << endl;
+            //cout << "i is " << i  << "    " << "rid is " << rid.pageNo << " " << rid.slotNo << endl;
             if (i & 1)        // Delete the odd-numbered ones.
             {
-                // cout << "To delete record " << rid << endl;
                 status = f.deleteRecord(rid);
                 // cout << " To delete record " << rid.slotNo << endl;
                 if (status != OK)
