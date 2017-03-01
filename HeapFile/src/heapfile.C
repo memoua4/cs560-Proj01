@@ -342,7 +342,7 @@ Status HeapFile::deleteFile()
             do
             {
                 // Load the record from the directory page
-                DataPageInfo *pageInfo;
+                DataPageInfo *pageInfo = new DataPageInfo();
                 int count;
                 currentDirPage->getRecord(currentDirRecord, (char *) pageInfo, count);
                 MINIBASE_BM->freePage(pageInfo->pageId);
@@ -424,7 +424,7 @@ Status HeapFile::findDataPage(const RID &rid, PageId &rpDirPageId, HFPage *&rpdi
         do
         {
             // Load the record from the directory page
-            DataPageInfo *pageInfo;
+            DataPageInfo *pageInfo = new DataPageInfo();
             int count;
             currentDirPage->getRecord(currentDirRecord, (char *) pageInfo, count);
 
