@@ -187,7 +187,7 @@ Status TestDriver::runAllTests()
 
     runTest( answer, &TestDriver::test2 );
     sv_answer = (answer == OK) ? sv_answer : FAIL;
-
+/*
     runTest( answer, &TestDriver::test3 );
     sv_answer = (answer == OK) ? sv_answer : FAIL;
 
@@ -198,7 +198,7 @@ Status TestDriver::runAllTests()
     sv_answer = (answer == OK) ? sv_answer : FAIL;
 
     runTest( answer, &TestDriver::test6 );
-    sv_answer = (answer == OK) ? sv_answer : FAIL;
+    sv_answer = (answer == OK) ? sv_answer : FAIL; */
 
     return sv_answer;
 }
