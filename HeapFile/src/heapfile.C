@@ -205,7 +205,9 @@ Status HeapFile::insertRecord(char *recPtr, int recLen, RID &outRid)
     MINIBASE_BM->pinPage(dataPageId, (Page *&) dataPage);
     dataPage->insertRecord(recPtr, recLen, outRid);
     int tempLen;
-    dirPage->returnRecord(temp, (char *&) dataPageInfo, tempLen);
+    RID first;
+    dirPage->firstRecord(first);
+    dirPage->returnRecord(first, (char *&) dataPageInfo, tempLen);
     dataPageInfo->recct++;
     dataPageInfo->availspace = dataPage->available_space();
     MINIBASE_BM->unpinPage(dataPageId, true);
