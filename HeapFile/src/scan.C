@@ -15,17 +15,17 @@
 // *******************************************
 // The constructor pins the first page in the file
 // and initializes its private data members from the private data members from hf
-Scan::Scan (HeapFile *hf, Status& status)
+Scan::Scan(HeapFile *hf, Status &status)
 {
-  status = init(hf);
+    status = init(hf);
 }
 
 // *******************************************
 // The deconstructor unpin all pages.
 Scan::~Scan()
 {
-  // put your code here
-  reset();
+    // put your code here
+    reset();
 }
 
 // *******************************************
@@ -63,10 +63,10 @@ Status Scan::getNext(RID &rid, char *recPtr, int &recLen)
 // Do all the constructor work.
 Status Scan::init(HeapFile *hf)
 {
-  // put your code here
-  _hf = hf; // set the heapfile name
-  scanIsDone = 0; // 0 indicates that the scan is not finished yet
-  return firstDataPage(); // get the first page
+    // put your code here
+    _hf = hf; // set the heapfile name
+    scanIsDone = 0; // 0 indicates that the scan is not finished yet
+    return firstDataPage(); // get the first page
 }
 
 // *******************************************
@@ -97,32 +97,33 @@ Status Scan::reset()
 // Copy data about first page in the file.
 Status Scan::firstDataPage()
 {
-  // put your code here
-  Status status;
-  dirPageId = _hf->firstDirPageId;
-  scanIsDone = 0;
-  dataPage = NULL;
-  nxtUserStatus = OK;
+    // put your code here
+    Status status;
+    dirPageId = _hf->firstDirPageId;
+    scanIsDone = 0;
+    dataPage = NULL;
+    nxtUserStatus = OK;
 
-  // status = MINIBASE_BM->pinPage(dirPageId, (Page *&) dirPage);
-  // if ( status != OK ) 
-  //   return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+    status = MINIBASE_BM->pinPage(dirPageId, (Page *&) dirPage);
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
 
-  // status = dirPage->firstRecord(dataPageRid);
-  // if ( status != OK && status == DONE ) 
-  //   return DONE; // no record exists in the data page 
+    status = dirPage->firstRecord(dataPageRid);
+    if (status != OK && status == DONE)
+        return DONE; // no record exists in the data page
 
-  // status = MINIBASE_BM->unpinPage(dirPageId);
-  // if ( status != OK ) 
-  //   return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+    DataPageInfo *dataPageInfo = new DataPageInfo();
+    int len;
+    dirPage->getRecord(dataPageRid, (char *) dataPageInfo, len);
 
-  // userRid = dataPageRid;
+    dataPageId = dataPageInfo->pageId;
 
-  status = nextDataPage(); // check if next data page exists 
-  if ( status != OK ) 
-    return DONE; // only one file 
+    status = nextDataPage(); // check if next data page exists
 
-  return OK;
+    if (status != OK)
+        return DONE; // only one file
+
+    return OK;
 }
 
 // *******************************************
@@ -143,7 +144,7 @@ Status Scan::nextDataPage()
         Status gotFirst = dataPage->firstRecord(userRid);
         // If we got a first record, just return it
         if (gotFirst == OK) return OK;
-        else                return MINIBASE_CHAIN_ERROR(SCAN, gotFirst);
+        else return MINIBASE_CHAIN_ERROR(SCAN, gotFirst);
     }
 
     // Unpin the current data page
@@ -167,8 +168,7 @@ Status Scan::nextDataPage()
         {
             scanIsDone = true;
             return DONE;
-        }
-        else return MINIBASE_CHAIN_ERROR(SCAN, status);
+        } else return MINIBASE_CHAIN_ERROR(SCAN, status);
     }
         // Move on ONLY if status == ok
     else if (status != OK) return MINIBASE_CHAIN_ERROR(SCAN, status);
@@ -177,7 +177,7 @@ Status Scan::nextDataPage()
     dataPageRid = nextDataPageInfoRID;
 
     // Grab the DataPageInfo from the directory page
-    DataPageInfo *info;
+    DataPageInfo *info = new DataPageInfo();
     int length;
     dirPage->getRecord(dataPageRid, (char *) info, length);
 
@@ -196,12 +196,14 @@ Status Scan::nextDataPage()
 
 // *******************************************
 // Retrieve the next directory page.
-Status Scan::nextDirPage() {
-  // put your code here
-  dirPageId = dirPage->getNextPage();
-  if ( dirPageId == INVALID_PAGE ) {
-    return DONE; // reached the end of the file
-  }
-  return OK;
+Status Scan::nextDirPage()
+{
+    // put your code here
+    dirPageId = dirPage->getNextPage();
+    if (dirPageId == INVALID_PAGE)
+    {
+        return DONE; // reached the end of the file
+    }
+    return OK;
 }
  
