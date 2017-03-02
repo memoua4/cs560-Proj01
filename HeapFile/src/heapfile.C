@@ -264,22 +264,29 @@ Status HeapFile::updateRecord(const RID &rid, char *recPtr, int recLen)
     char *foundRec = NULL;
     int foundLen;
 
-    status = MINIBASE_BM->pinPage(rpDataPageId, (Page *&) rpdatapage);
-    if (status != OK)
+    status = rpdatapage->returnRecord(rid, foundRec, foundLen);
+    if ( status != OK ) {
+        MINIBASE_BM->unpinPage(rpDataPageId, false);
+        MINIBASE_BM->unpinPage(rpDirPageId, false);
         return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+    }
 
-    status = rpdatapage->getRecord(rid, foundRec, foundLen);
-    if (status != OK)
-        return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
-
-    status = MINIBASE_BM->unpinPage(rpDataPageId);
-    if (status != OK)
-        return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
-
-    if (recLen != foundLen)
+// cout << "**** updateRecord " << endl;
+    if (recLen != foundLen) {
+        MINIBASE_BM->unpinPage(rpDataPageId, false);
+        MINIBASE_BM->unpinPage(rpDirPageId, false);
         return FAIL;
+    }
 
-    memcpy(recPtr, foundRec, recLen);
+    memcpy(foundRec, recPtr, recLen);
+
+    status = MINIBASE_BM->unpinPage(rpDataPageId, true);
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+    status = MINIBASE_BM->unpinPage(rpDirPageId, false);
+    if ( status != OK ) 
+        return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+
     return OK;
 }
 
