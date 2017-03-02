@@ -1,4 +1,4 @@
-#include "new_error.h"
+#include "../include/new_error.h"
 #include "string.h"
 #include "stdio.h"
 #include "stdlib.h"

@@ -7,12 +7,12 @@
 #include <assert.h>
 #include <unistd.h>
 
-#include "buf.h"
-#include "db.h"
-#include <pwd.h>
+#include "../include/buf.h"
+#include "../include/db.h"
+#include <process.h>
 
 
-#include "BMTester.h"
+#include "../include/BMTester.h"
 
 //extern "C" int getpid();
 //extern "C" int unlink( const char* );

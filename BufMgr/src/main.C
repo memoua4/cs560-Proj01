@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <iostream>
 
-#include "BMTester.h"
+#include "../include/BMTester.h"
 
 int MINIBASE_RESTART_FLAG = 0;
 
