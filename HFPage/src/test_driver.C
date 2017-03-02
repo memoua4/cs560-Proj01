@@ -6,9 +6,9 @@
 #include <iostream>
 #include <assert.h>
 
-#include "../include/new_error.h"
-#include "../include/test_driver.h"
-#include <process.h>
+#include "new_error.h"
+#include "test_driver.h"
+#include <pwd.h>
 #include <unistd.h>
 
 using namespace std;
@@ -134,19 +134,19 @@ Status TestDriver::runTests()
     char* newdbpath;
     char* newlogpath;
    
-	char remove_logcmd[100];
-	char remove_dbcmd[100];
+  char remove_logcmd[100];
+  char remove_dbcmd[100];
 
     newdbpath = new char[ strlen(dbpath) + 20];
     newlogpath = new char[ strlen(logpath) + 20];
     strcpy(newdbpath,dbpath); 
     strcpy(newlogpath, logpath);
 
-	sprintf(remove_logcmd, "/bin/rm -rf %s", logpath);
-	sprintf(remove_dbcmd, "/bin/rm -rf %s", dbpath);
-	
-	system(remove_logcmd);
-	system(remove_dbcmd);
+  sprintf(remove_logcmd, "/bin/rm -rf %s", logpath);
+  sprintf(remove_dbcmd, "/bin/rm -rf %s", dbpath);
+  
+  system(remove_logcmd);
+  system(remove_dbcmd);
 
   sprintf(newdbpath, "%s", dbpath);
   sprintf(newlogpath, "%s", logpath);
