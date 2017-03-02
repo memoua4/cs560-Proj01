@@ -15,12 +15,25 @@
 // *******************************************
 // The constructor pins the first page in the file
 // and initializes its private data members from the private data members from hf
+/**
+  * Function: Scan:Scan
+  * Parameter: HeapFile *hf : the filename of the Heap File
+  *                    Status (Passed By Referenced) This is used to indicate whether or not a Scan object was successfully created
+  *
+  * Description:  The constructor creates a Scan object. Scan::init(HeapFile *hf) page is called to initialized all the private 
+  * variables in the header file. Refer to Scan::init(hf) to indicate the exact description of the constructor. 
+  */
 Scan::Scan(HeapFile *hf, Status &status) {
     status = init(hf);
 }
 
 // *******************************************
 // The deconstructor unpin all pages.
+/** 
+ * Function: Scan::-Scan()
+ * 
+ * Description: The deconstructor calls reset() which will reset all the global variables and unpin all the pages.
+ */
 Scan::~Scan() {
     // put your code here
     reset();
@@ -29,6 +42,23 @@ Scan::~Scan() {
 // *******************************************
 // Retrieve the next record in a sequential scan.
 // Also returns the RID of the retrieved record.
+/**
+ * Function: Scan::getNext(RID &rid, char *recPtr, int &recLen) 
+ * Parameter: RID rid ( passed by reference ) is used to store the record id of the next record on the page. 
+ *                    char * recPtr ( passed by reference ) stores the content of the record that it retrieves 
+ *                    int &recLen ( passed by reference ) stores the length of the record
+ *
+ *  @return: status 
+ *            status is used to indicate whether or not the next record was retrieved successfully 
+ *            it returns OK if it retrives the next record
+ *            it returns DONE or other Messages if the next record was not able to be retrieved
+ *
+ * Description: This method is used to retrieved the next record on the data page. It does a look ahead to check if the 
+ * data page still contains a record that have not been examined. If the nxtUserStatus (which is used to indicate that
+ * the next record exists) is not OK, it calls the nextDataPage(). This will attempt to retrieve the first record on the next
+ * data page. If successful, it will return the first record on that data page. Otherwise, if nxtUserStatus is OK, it return
+ * the following record.
+ */
 Status Scan::getNext(RID &rid, char *recPtr, int &recLen) {
     Status status;
 
@@ -60,6 +90,16 @@ Status Scan::getNext(RID &rid, char *recPtr, int &recLen) {
 
 // *******************************************
 // Do all the constructor work.
+/**
+ * Scan::init(HeapFile *hf) 
+ * Parameter: HeapFile *hf : the name of the heapfile 
+ * 
+ * return status 
+ *            indicates if the Scan object has been created 
+ *            
+ * Description: The method first set the heapfile and set scanIsDone to false. When creating a scan object, scanIsDone
+ * must be set to false. The heapfile has not been accessed yet. 
+ */
 Status Scan::init(HeapFile *hf) {
     // put your code here
     _hf = hf; // set the heapfile name
@@ -69,6 +109,15 @@ Status Scan::init(HeapFile *hf) {
 
 // *******************************************
 // Reset everything and unpin all pages.
+/** 
+ * Function: Scan::reset()
+ *
+ * return status
+ *              indcates whether or not the method has unpinned all the pages in the Buffer Manager
+ *
+ * Description: This function resets all the pages pinned in the pool. It resets all the HFPage (individual page) to NULL.
+ * This indicates that the scan has been deleted.
+ */
 Status Scan::reset() {
     Status status;
     if (dataPageId != INVALID_PAGE) {
@@ -82,7 +131,7 @@ Status Scan::reset() {
         dataPage = NULL;
     }
     if (dirPageId != INVALID_PAGE) {
-        MINIBASE_BM->unpinPage(dirPageId);
+        status = MINIBASE_BM->unpinPage(dirPageId);
         if (status != OK)
             return MINIBASE_CHAIN_ERROR(SCAN, status);
         dirPageId = _hf->firstDirPageId;
@@ -98,6 +147,16 @@ Status Scan::reset() {
 
 // *******************************************
 // Copy data about first page in the file.
+/**
+ * Function: firstDataPage()
+ * 
+ * @return status 
+ *            retrieves the first data page that exists in the directory 
+ *
+ * Description: This function attempts to retrieve the first data page in the first directory page. If it fails to grab the first
+ * data page, it will return an error message. If it does grab the first data page, the buffer manager pins the first directory 
+ * page into the pool. Then it calls nextDataPage() to retrieved the next record or checks if the next record exists.
+ */
 Status Scan::firstDataPage() {
     // put your code here
     Status status;
@@ -117,7 +176,9 @@ Status Scan::firstDataPage() {
 
     DataPageInfo *dataPageInfo = new DataPageInfo();
     int len;
-    dirPage->getRecord(dataPageRid, (char *) dataPageInfo, len);
+    status = dirPage->getRecord(dataPageRid, (char *) dataPageInfo, len);
+    if ( status != OK ) 
+      return MINIBASE_CHAIN_ERROR(SCAN, status);
 
     dataPageId = dataPageInfo->pageId;
     delete dataPageInfo;
@@ -134,6 +195,17 @@ Status Scan::firstDataPage() {
 
 // *******************************************
 // Retrieve the next data page.
+/**
+ * Function: nextDataPage() 
+ * 
+ * return status 
+ *          status determines if a next record exsits (if it doesn't exists) this means it reached the end of the heapfile
+*                       no directory has any more data pages.
+ * 
+ * Description: It attemps to retrieved the next record in the data page. If the next record does not exists, it will check the
+ * following directory page. If it reaches the end of the file, it will return DONE, otherwise it returns OK. If it returned 
+ * other error messages, this may be because of the Buffer Manager failing to pin and unpin pages. 
+ */
 Status Scan::nextDataPage() {
     Status status;
 
@@ -163,7 +235,12 @@ Status Scan::nextDataPage() {
     // Grab the DataPageInfo from the directory page
     DataPageInfo *info = new DataPageInfo();
     int length;
-    dirPage->getRecord(dataPageRid, (char *) info, length);
+    status = dirPage->getRecord(dataPageRid, (char *) info, length);
+    if ( status != OK ) {
+      status = MINIBASE_BM->unpinPage(dataPageId);
+      if (status != OK)
+          return MINIBASE_CHAIN_ERROR(SCAN, status);
+    }
 
     // Unpin the current data page
     status = MINIBASE_BM->unpinPage(dataPageId);
@@ -188,6 +265,12 @@ Status Scan::nextDataPage() {
 
 // *******************************************
 // Retrieve the next directory page.
+/** 
+ * Function: nextDirPage()
+ * 
+ * Description: The function returns a status message. If it reaches the end of the Heap File, it returns DONE, otherwise OK
+ * because it successfully got the next directory page. Other error messages are indicated if fails in the Buffer Manager. 
+ */
 Status Scan::nextDirPage() {
     PageId oldDirPage = dirPageId;
     dirPageId = dirPage->getNextPage();
