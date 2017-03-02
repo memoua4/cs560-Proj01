@@ -35,7 +35,6 @@ Status Scan::getNext(RID &rid, char *recPtr, int &recLen)
 {
     Status status;
 
-
     // Check if we have a valid datapage to grab from
     if (nxtUserStatus != OK)
     {
@@ -53,9 +52,7 @@ Status Scan::getNext(RID &rid, char *recPtr, int &recLen)
     // This will fill in recPtr and recLen
     status = dataPage->getRecord(userRid, recPtr, recLen);
     if (status != OK)
-    {
         return MINIBASE_CHAIN_ERROR(SCAN, status);
-    }
 
     // Fill in rid
     rid = userRid;
@@ -73,7 +70,7 @@ Status Scan::init(HeapFile *hf)
 {
     // put your code here
     _hf = hf; // set the heapfile name
-    scanIsDone = 0; // 0 indicates that the scan is not finished yet
+    scanIsDone = false; // 0 indicates that the scan is not finished yet
     return firstDataPage(); // get the first page
 }
 
@@ -81,24 +78,30 @@ Status Scan::init(HeapFile *hf)
 // Reset everything and unpin all pages.
 Status Scan::reset()
 {
+    Status status;
+    if (dataPageId != INVALID_PAGE)
+    {
+        status = MINIBASE_BM->unpinPage(dataPageId);
+        if (status != OK)
+            return MINIBASE_CHAIN_ERROR(SCAN, status);
+
+        dataPageId = INVALID_PAGE;
+    }
     if (dataPage != NULL)
     {
         dataPage = NULL;
     }
-    if (dataPageId != INVALID_PAGE)
+    if (dirPageId != INVALID_PAGE)
     {
-        MINIBASE_BM->unpinPage(dataPageId);
-        dataPageId = 0;
+        MINIBASE_BM->unpinPage(dirPageId);
+        if (status != OK)
+            return MINIBASE_CHAIN_ERROR(SCAN, status);
+        dirPageId = _hf->firstDirPageId;
     }
     if (dirPage != NULL)
     {
         // Unpin the dirPage
         dirPage = NULL;
-    }
-    if (dirPageId != INVALID_PAGE)
-    {
-        MINIBASE_BM->unpinPage(dirPageId);
-        dirPageId = _hf->firstDirPageId;
     }
     scanIsDone = false;
     nxtUserStatus = OK;
@@ -113,29 +116,33 @@ Status Scan::firstDataPage()
     Status status;
     dirPageId = _hf->firstDirPageId;
     scanIsDone = 0;
-    dataPage = NULL;
     nxtUserStatus = OK;
 
     status = MINIBASE_BM->pinPage(dirPageId, (Page *&) dirPage);
     if (status != OK)
-        return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
+        return MINIBASE_CHAIN_ERROR(SCAN, status);
 
     status = dirPage->firstRecord(dataPageRid);
-    if (status != OK && status == DONE)
+    if (status != OK && status == DONE) {
+        reset();
         return DONE; // no record exists in the data page
+    }
 
     DataPageInfo *dataPageInfo = new DataPageInfo();
     int len;
     dirPage->getRecord(dataPageRid, (char *) dataPageInfo, len);
 
     dataPageId = dataPageInfo->pageId;
+    delete dataPageInfo;
 
-    status = nextDataPage(); // check if next data page exists
-
+    status = MINIBASE_BM->pinPage(dataPageId, (Page *&) dataPage);
     if (status != OK)
-        return DONE; // only one file
+        return MINIBASE_CHAIN_ERROR(SCAN, status);
 
-    return OK;
+    Status gotFirst = dataPage->firstRecord(userRid);
+    if (gotFirst == DONE) return DONE;
+    else if (gotFirst == OK) return OK;
+    else return MINIBASE_CHAIN_ERROR(SCAN, gotFirst);
 }
 
 // *******************************************
@@ -143,26 +150,6 @@ Status Scan::firstDataPage()
 Status Scan::nextDataPage()
 {
     Status status;
-
-    // dataPage might be null if this is the first call to nextDataPage
-    if (dataPage == NULL)
-    {
-        // Make sure that this current page ID is not invalid
-        if (dataPageId == INVALID_PAGE) return DONE;
-
-        // Pin the page
-        MINIBASE_BM->pinPage(dataPageId, (Page *&) dataPage);
-        // Grab the first record and place RID into the private data field
-        Status gotFirst = dataPage->firstRecord(userRid);
-        // If we got a first record, just return it
-        if (gotFirst == OK) return OK;
-        else if (gotFirst == DONE) return DONE;
-        else return MINIBASE_CHAIN_ERROR(SCAN, gotFirst);
-    }
-
-    // Unpin the current data page
-    MINIBASE_BM->unpinPage(dataPageId);
-    dataPageId = INVALID_PAGE;
 
     // Retrieve the next DataPageInfo
     RID nextDataPageInfoRID;
@@ -180,7 +167,7 @@ Status Scan::nextDataPage()
             // if no next directory pages exists, we're done with the scan
         else if (hasNextDirPage == DONE)
         {
-            scanIsDone = true;
+            reset();
             return DONE;
         } else return MINIBASE_CHAIN_ERROR(SCAN, status);
     }
@@ -195,10 +182,20 @@ Status Scan::nextDataPage()
     int length;
     dirPage->getRecord(dataPageRid, (char *) info, length);
 
+    // Unpin the current data page
+    status = MINIBASE_BM->unpinPage(dataPageId);
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(SCAN, status);
+    dataPageId = INVALID_PAGE;
+
     // Set the new dataPageId
     dataPageId = info->pageId;
+    delete info;
+
     // Set the new dataPage
-    MINIBASE_BM->pinPage(dataPageId, (Page *&) dataPage);
+    status = MINIBASE_BM->pinPage(dataPageId, (Page *&) dataPage);
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(SCAN, status);
 
     dataPage->firstRecord(userRid);
     nxtUserStatus = OK;
@@ -212,12 +209,15 @@ Status Scan::nextDirPage()
 {
     PageId oldDirPage = dirPageId;
     dirPageId = dirPage->getNextPage();
-    MINIBASE_BM->unpinPage(oldDirPage);
+    Status status;
+    status = MINIBASE_BM->unpinPage(oldDirPage);
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(SCAN, status);
     if (dirPageId == INVALID_PAGE)
-    {
         return DONE; // reached the end of the file
-    }
-    MINIBASE_BM->pinPage(dirPageId, (Page *&) dirPage);
+    status = MINIBASE_BM->pinPage(dirPageId, (Page *&) dirPage);
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(SCAN, status);
     return OK;
 }
  
