@@ -3,7 +3,7 @@ David Slovikosky
 Mai Moua
 
 **** Changes ****
-The program was having trouble compiling when HeapFile/include/test_driver.h include the statement at the beginning of the file: extern "C" int unlink( const char* ); There are no other changes. 
+The program was having trouble compiling when HeapFile/include/test_driver.h include the statement at the beginning of the file: extern "C" int unlink( const char* ); We commented out that single line. There are no other changes. 
 
 Date: 02/14/14
 Writer: Young-K. Suh
