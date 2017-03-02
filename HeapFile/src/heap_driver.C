@@ -297,7 +297,6 @@ int HeapDriver::test3()
     if (status != OK)
         cerr << "*** Error opening heap file\n";
 
-
     if (status == OK)
     {
         cout << "  - Change the records\n";
@@ -309,7 +308,6 @@ int HeapDriver::test3()
     {
         int len, i = 0;
         Rec rec;
-
         while ((status = scan->getNext(rid, (char *) &rec, len)) == OK)
         {
             rec.fval = 7 * i;     // We'll check that i==rec.ival below.
@@ -321,14 +319,13 @@ int HeapDriver::test3()
             }
             i += 2;     // Recall, we deleted every other record above.
         }
-
         if (status == DONE)
             status = OK;
     }
 
     delete scan;
     scan = 0;
-
+// cout << "getNumUnpinnedBuffers == " << MINIBASE_BM->getNumUnpinnedBuffers() << " and getNumBuffers() " << MINIBASE_BM->getNumBuffers() << endl;
     if (status == OK && MINIBASE_BM->getNumUnpinnedBuffers() != MINIBASE_BM->getNumBuffers())
     {
         cerr << "*** Updating left pages pinned\n";
@@ -369,10 +366,11 @@ int HeapDriver::test3()
 
         if (status == DONE)
             status = OK;
+          // cout << "getNumUnpinnedBuffers == " << MINIBASE_BM->getNumUnpinnedBuffers() << " and getNumBuffers() " << MINIBASE_BM->getNumBuffers() << endl;
     }
 
     delete scan;
-
+    // cout << "getNumUnpinnedBuffers == " << MINIBASE_BM->getNumUnpinnedBuffers() << " and getNumBuffers() " << MINIBASE_BM->getNumBuffers() << endl;
     if (status == OK)
         cout << "  Test 3 completed successfully.\n";
     return (status == OK);
@@ -395,6 +393,7 @@ int HeapDriver::test4()
         cerr << "*** Could not create heap file\n";
     else if (MINIBASE_BM->getNumUnpinnedBuffers() != MINIBASE_BM->getNumBuffers())
     {
+      // cout << "getNumUnpinnedBuffers == " << MINIBASE_BM->getNumUnpinnedBuffers() << " and getNumBuffers() " << MINIBASE_BM->getNumBuffers() << endl;
         cerr << "*** The heap file has left pages pinned\n";
         status = FAIL;
     }

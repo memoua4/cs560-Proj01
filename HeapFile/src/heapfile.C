@@ -271,7 +271,6 @@ Status HeapFile::updateRecord(const RID &rid, char *recPtr, int recLen)
         return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
     }
 
-// cout << "**** updateRecord " << endl;
     if (recLen != foundLen) {
         MINIBASE_BM->unpinPage(rpDataPageId, false);
         MINIBASE_BM->unpinPage(rpDirPageId, false);
@@ -305,7 +304,14 @@ Status HeapFile::getRecord(const RID &rid, char *recPtr, int &recLen)
     if (status == OK)
     {
         dataPage->getRecord(rid, recPtr, recLen);
+    } else {
+        MINIBASE_BM->unpinPage(dataPageID);
+        MINIBASE_BM->unpinPage(dirPageID);
+        return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
     }
+
+    MINIBASE_BM->unpinPage(dataPageID);
+    MINIBASE_BM->unpinPage(dirPageID);
 
     return OK;
 }

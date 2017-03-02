@@ -191,11 +191,11 @@ Status TestDriver::runAllTests()
     runTest( answer, &TestDriver::test3 );
     sv_answer = (answer == OK) ? sv_answer : FAIL;
 
-    // runTest( answer, &TestDriver::test4 );
-    // sv_answer = (answer == OK) ? sv_answer : FAIL;
+    runTest( answer, &TestDriver::test4 );
+    sv_answer = (answer == OK) ? sv_answer : FAIL;
 
-    // runTest( answer, &TestDriver::test5 );
-    // sv_answer = (answer == OK) ? sv_answer : FAIL;
+    runTest( answer, &TestDriver::test5 );
+    sv_answer = (answer == OK) ? sv_answer : FAIL;
 
     // runTest( answer, &TestDriver::test6 );
     // sv_answer = (answer == OK) ? sv_answer : FAIL; 
