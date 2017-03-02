@@ -23,7 +23,7 @@ void HFPage::init(PageId pageNo) {
     // initialize usedPtr, points to the end of data arrayx
     usedPtr = MAX_SPACE - DPFIXED;
     // initialize freeSpace, it is equivalent to the fixed number of space in the data array
-    freeSpace = MAX_SPACE - DPFIXED;
+    freeSpace = MAX_SPACE - DPFIXED + sizeof(slot_t);
 }
 
 // **********************************************************
@@ -242,7 +242,7 @@ Status HFPage::returnRecord(RID rid, char *&recPtr, int &recLen) {
 // Returns the amount of available space on the heap file page
 int HFPage::available_space(void) {
     // Just return the free space
-    return freeSpace;
+    return freeSpace - sizeof(slot_t);
 }
 
 // **********************************************************
