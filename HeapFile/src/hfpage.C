@@ -29,16 +29,16 @@ void HFPage::init(PageId pageNo) {
 // **********************************************************
 // dump page utlity
 void HFPage::dumpPage() {
-    int i;
+    //int i;
 
     cout << "dumpPage, this: " << this << endl;
     cout << "curPage= " << curPage << ", nextPage=" << nextPage << endl;
     cout << "usedPtr=" << usedPtr << ",  freeSpace=" << freeSpace << ", slotCnt=" << slotCnt << endl;
 
-    for (i = 0; i <= slotCnt; i++) {
-        cout << "slot[" << i << "].offset=" << slot[i].offset << ", slot[" << i << "].length=" << slot[i].length
-             << endl;
-    }
+    //for (i = 0; i <= slotCnt; i++) {
+    //    cout << "slot[" << i << "].offset=" << slot[i].offset << ", slot[" << i << "].length=" << slot[i].length
+    //         << endl;
+    //}
 }
 
 // **********************************************************
@@ -177,11 +177,8 @@ Status HFPage::nextRecord(RID curRid, RID &nextRid) {
     if (curRid.pageNo != curPage)
         return FAIL;
     // If we're under 0, it's invalid
-    if (curNo < 0)
+    if (curNo < 0 || curNo > slotCnt)
         return FAIL;
-    // If we're over slot count, then just return done since no more records exist
-    if (curNo > slotCnt)
-        return DONE;
     // If the current slot is empty, we got an invalid slot
     if (slot[curNo].length == EMPTY_SLOT)
         return FAIL;
