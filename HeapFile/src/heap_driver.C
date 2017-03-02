@@ -19,8 +19,7 @@
 using namespace std;
 
 static const int namelen = 24;
-struct Rec
-{
+struct Rec {
     int ival;
     float fval;
     char name[namelen];
@@ -29,22 +28,18 @@ struct Rec
 static const int reclen = sizeof(Rec);
 
 
-HeapDriver::HeapDriver() : TestDriver("hftest")
-{
+HeapDriver::HeapDriver() : TestDriver("hftest") {
     choice = 2000;   // big enough for file to occupy > 1 directory page
 }
 
-HeapDriver::~HeapDriver()
-{}
+HeapDriver::~HeapDriver() {}
 
 
-Status HeapDriver::runTests()
-{
+Status HeapDriver::runTests() {
     return TestDriver::runTests();
 }
 
-Status HeapDriver::runAllTests()
-{
+Status HeapDriver::runAllTests() {
     Status answer;
     minibase_globals = new SystemDefs(answer, dbpath, logpath, 1000, 500, 100, "Clock");
     if (answer == OK)
@@ -55,16 +50,14 @@ Status HeapDriver::runAllTests()
     return answer;
 }
 
-const char *HeapDriver::testName()
-{
+const char *HeapDriver::testName() {
     return "Heap File";
 }
 
 
 //********************************************
 
-int HeapDriver::test1()
-{
+int HeapDriver::test1() {
     cout << "\n  Test 1: Insert and scan fixed-size records\n";
     Status status = OK;
     RID rid;
@@ -74,17 +67,14 @@ int HeapDriver::test1()
 
     if (status != OK)
         cerr << "*** Could not create heap file\n";
-    else if (MINIBASE_BM->getNumUnpinnedBuffers() != MINIBASE_BM->getNumBuffers())
-    {
+    else if (MINIBASE_BM->getNumUnpinnedBuffers() != MINIBASE_BM->getNumBuffers()) {
         cerr << "*** The heap file has left pages pinned\n";
         status = FAIL;
     }
 
-    if (status == OK)
-    {
+    if (status == OK) {
         cout << "  - Add " << choice << " records to the file\n";
-        for (int i = 0; (i < choice) && (status == OK); i++)
-        {
+        for (int i = 0; (i < choice) && (status == OK); i++) {
             Rec rec = {i, (float) (i * 2.5)};
             sprintf(rec.name, "record %i", i);
 
@@ -94,15 +84,13 @@ int HeapDriver::test1()
 
             if (status != OK)
                 cerr << "*** Error inserting record " << i << endl;
-            else if (MINIBASE_BM->getNumUnpinnedBuffers() != MINIBASE_BM->getNumBuffers())
-            {
+            else if (MINIBASE_BM->getNumUnpinnedBuffers() != MINIBASE_BM->getNumBuffers()) {
                 cerr << "*** Insertion left a page pinned\n";
                 status = FAIL;
             }
         }
 
-        if (f.getRecCnt() != choice)
-        {
+        if (f.getRecCnt() != choice) {
             status = FAIL;
             cerr << "*** File reports " << f.getRecCnt() << " records, not " << choice << endl;
         }
@@ -114,35 +102,29 @@ int HeapDriver::test1()
 
 
     Scan *scan = 0;
-    if (status == OK)
-    {
+    if (status == OK) {
         cout << "  - Scan the records just inserted\n";
         scan = f.openScan(status);
 
         if (status != OK)
             cerr << "*** Error opening scan\n";
-        else if (MINIBASE_BM->getNumUnpinnedBuffers() == MINIBASE_BM->getNumBuffers())
-        {
+        else if (MINIBASE_BM->getNumUnpinnedBuffers() == MINIBASE_BM->getNumBuffers()) {
             cerr << "*** The heap-file scan has not pinned the first page\n";
             cerr << MINIBASE_BM->getNumUnpinnedBuffers() - MINIBASE_BM->getNumBuffers() << endl;
             status = FAIL;
         }
     }
 
-    if (status == OK)
-    {
+    if (status == OK) {
         int len, i = 0;
         Rec rec;
 
-        while ((status = scan->getNext(rid, (char *) &rec, len)) == OK)
-        {
-            if (len != reclen)
-            {
+        while ((status = scan->getNext(rid, (char *) &rec, len)) == OK) {
+            if (len != reclen) {
                 cerr << "*** Record " << i << " had unexpected length " << len << endl;
                 status = FAIL;
                 break;
-            } else if (MINIBASE_BM->getNumUnpinnedBuffers() == MINIBASE_BM->getNumBuffers())
-            {
+            } else if (MINIBASE_BM->getNumUnpinnedBuffers() == MINIBASE_BM->getNumBuffers()) {
                 cerr << "On record " << i << ":\n";
                 cerr << "*** The heap-file scan has not left its page pinned\n";
                 status = FAIL;
@@ -151,8 +133,7 @@ int HeapDriver::test1()
 
             char name[sizeof rec.name];
             sprintf(name, "record %i", i);
-            if ((rec.ival != i) || (rec.fval != i * 2.5) || (0 != strcmp(rec.name, name)))
-            {
+            if ((rec.ival != i) || (rec.fval != i * 2.5) || (0 != strcmp(rec.name, name))) {
                 cerr << "*** Record " << i << " differs from what we inserted\n";
                 cerr << "rec.ival: " << rec.ival << " should be " << i << endl;
                 cerr << "rec.fval: " << rec.fval << " should be " << (i * 2.5) << endl;
@@ -163,10 +144,8 @@ int HeapDriver::test1()
             ++i;
         }
 
-        if (status == DONE)
-        {
-            if (MINIBASE_BM->getNumUnpinnedBuffers() != MINIBASE_BM->getNumBuffers())
-            {
+        if (status == DONE) {
+            if (MINIBASE_BM->getNumUnpinnedBuffers() != MINIBASE_BM->getNumBuffers()) {
                 cerr << MINIBASE_BM->getNumUnpinnedBuffers() << endl;
                 cerr << MINIBASE_BM->getNumBuffers() << endl;
                 cerr << "*** The heap-file scan has not unpinned its page after finishing\n";
@@ -187,8 +166,7 @@ int HeapDriver::test1()
 
 //***************************************************
 
-int HeapDriver::test2()
-{
+int HeapDriver::test2() {
     cout << "\n  Test 2: Delete fixed-size records\n";
     Status status = OK;
     Scan *scan = 0;
@@ -201,27 +179,23 @@ int HeapDriver::test2()
         cerr << "*** Error opening heap file\n";
 
 
-    if (status == OK)
-    {
+    if (status == OK) {
         cout << "  - Delete half the records\n";
         scan = f.openScan(status);
         if (status != OK)
             cerr << "*** Error opening scan\n";
     }
-    if (status == OK)
-    {
+    if (status == OK) {
         int len, i = 0;
         Rec rec;
 
-        while ((status = scan->getNext(rid, (char *) &rec, len)) == OK)
-        {
+        while ((status = scan->getNext(rid, (char *) &rec, len)) == OK) {
             //cout << "i is " << i  << "    " << "rid is " << rid.pageNo << " " << rid.slotNo << endl;
             if (i & 1)        // Delete the odd-numbered ones.
             {
                 status = f.deleteRecord(rid);
                 // cout << " To delete record " << rid.slotNo << endl;
-                if (status != OK)
-                {
+                if (status != OK) {
 
                     cerr << "*** Error deleting record " << i << endl;
                     minibase_errors.show_errors();
@@ -239,28 +213,23 @@ int HeapDriver::test2()
     delete scan;
     scan = 0;
 
-    if (status == OK && MINIBASE_BM->getNumUnpinnedBuffers() != MINIBASE_BM->getNumBuffers())
-    {
+    if (status == OK && MINIBASE_BM->getNumUnpinnedBuffers() != MINIBASE_BM->getNumBuffers()) {
         cerr << "*** Deletion left a page pinned\n";
         status = FAIL;
     }
 
-    if (status == OK)
-    {
+    if (status == OK) {
         cout << "  - Scan the remaining records\n";
         scan = f.openScan(status);
         if (status != OK)
             cerr << "*** Error opening scan\n";
     }
-    if (status == OK)
-    {
+    if (status == OK) {
         int len, i = 0;
         Rec rec;
 
-        while ((status = scan->getNext(rid, (char *) &rec, len)) == OK)
-        {
-            if ((rec.ival != i) || (rec.fval != i * 2.5))
-            {
+        while ((status = scan->getNext(rid, (char *) &rec, len)) == OK) {
+            if ((rec.ival != i) || (rec.fval != i * 2.5)) {
                 cerr << "*** Record " << i << " differs from what we inserted\n";
                 cerr << "rec.ival: " << rec.ival << " should be " << i << endl;
                 cerr << "rec.fval: " << rec.fval << " should be " << (i * 2.5) << endl;
@@ -284,8 +253,7 @@ int HeapDriver::test2()
 
 //********************************************************
 
-int HeapDriver::test3()
-{
+int HeapDriver::test3() {
     cout << "\n  Test 3: Update fixed-size records\n";
     Status status = OK;
     Scan *scan = 0;
@@ -297,23 +265,19 @@ int HeapDriver::test3()
     if (status != OK)
         cerr << "*** Error opening heap file\n";
 
-    if (status == OK)
-    {
+    if (status == OK) {
         cout << "  - Change the records\n";
         scan = f.openScan(status);
         if (status != OK)
             cerr << "*** Error opening scan\n";
     }
-    if (status == OK)
-    {
+    if (status == OK) {
         int len, i = 0;
         Rec rec;
-        while ((status = scan->getNext(rid, (char *) &rec, len)) == OK)
-        {
+        while ((status = scan->getNext(rid, (char *) &rec, len)) == OK) {
             rec.fval = 7 * i;     // We'll check that i==rec.ival below.
             status = f.updateRecord(rid, (char *) &rec, len);
-            if (status != OK)
-            {
+            if (status != OK) {
                 cerr << "*** Error updating record " << i << endl;
                 break;
             }
@@ -326,35 +290,29 @@ int HeapDriver::test3()
     delete scan;
     scan = 0;
 // cout << "getNumUnpinnedBuffers == " << MINIBASE_BM->getNumUnpinnedBuffers() << " and getNumBuffers() " << MINIBASE_BM->getNumBuffers() << endl;
-    if (status == OK && MINIBASE_BM->getNumUnpinnedBuffers() != MINIBASE_BM->getNumBuffers())
-    {
+    if (status == OK && MINIBASE_BM->getNumUnpinnedBuffers() != MINIBASE_BM->getNumBuffers()) {
         cerr << "*** Updating left pages pinned\n";
         status = FAIL;
     }
 
-    if (status == OK)
-    {
+    if (status == OK) {
         cout << "  - Check that the updates are really there\n";
         scan = f.openScan(status);
         if (status != OK)
             cerr << "*** Error opening scan\n";
     }
-    if (status == OK)
-    {
+    if (status == OK) {
         int len, i = 0;
         Rec rec, rec2;
 
-        while ((status = scan->getNext(rid, (char *) &rec, len)) == OK)
-        {
+        while ((status = scan->getNext(rid, (char *) &rec, len)) == OK) {
             // While we're at it, test the getRecord method too.
             status = f.getRecord(rid, (char *) &rec2, len);
-            if (status != OK)
-            {
+            if (status != OK) {
                 cerr << "*** Error getting record " << i << endl;
                 break;
             }
-            if ((rec.ival != i) || (rec.fval != i * 7) || (rec2.ival != i) || (rec2.fval != i * 7))
-            {
+            if ((rec.ival != i) || (rec.fval != i * 7) || (rec2.ival != i) || (rec2.fval != i * 7)) {
                 cerr << "*** Record " << i << " differs from our update\n";
                 cerr << "rec.ival: " << rec.ival << " should be " << i << endl;
                 cerr << "rec.fval: " << rec.fval << " should be " << (i * 7.0) << endl;
@@ -366,7 +324,7 @@ int HeapDriver::test3()
 
         if (status == DONE)
             status = OK;
-          // cout << "getNumUnpinnedBuffers == " << MINIBASE_BM->getNumUnpinnedBuffers() << " and getNumBuffers() " << MINIBASE_BM->getNumBuffers() << endl;
+        // cout << "getNumUnpinnedBuffers == " << MINIBASE_BM->getNumUnpinnedBuffers() << " and getNumBuffers() " << MINIBASE_BM->getNumBuffers() << endl;
     }
 
     delete scan;
@@ -379,8 +337,7 @@ int HeapDriver::test3()
 
 //*****************************************************************
 
-int HeapDriver::test4()
-{
+int HeapDriver::test4() {
     cout << "\n  Test 4: Insert and scan variable-length records\n";
     Status status = OK;
     Scan *scan = 0;
@@ -391,9 +348,8 @@ int HeapDriver::test4()
 
     if (status != OK)
         cerr << "*** Could not create heap file\n";
-    else if (MINIBASE_BM->getNumUnpinnedBuffers() != MINIBASE_BM->getNumBuffers())
-    {
-      // cout << "getNumUnpinnedBuffers == " << MINIBASE_BM->getNumUnpinnedBuffers() << " and getNumBuffers() " << MINIBASE_BM->getNumBuffers() << endl;
+    else if (MINIBASE_BM->getNumUnpinnedBuffers() != MINIBASE_BM->getNumBuffers()) {
+        // cout << "getNumUnpinnedBuffers == " << MINIBASE_BM->getNumUnpinnedBuffers() << " and getNumBuffers() " << MINIBASE_BM->getNumBuffers() << endl;
         cerr << "*** The heap file has left pages pinned\n";
         status = FAIL;
     }
@@ -401,8 +357,7 @@ int HeapDriver::test4()
     unsigned recSize = MINIBASE_PAGESIZE / 2;
     unsigned numRecs = 0;
     char record[MINIBASE_PAGESIZE] = "";
-    if (status == OK)
-    {
+    if (status == OK) {
         cout << "  - Add variable-sized records\n";
 
         /* We use half a page as the starting size so that a single page won't
@@ -411,39 +366,33 @@ int HeapDriver::test4()
            number of each record on the record itself. */
 
         for (; recSize >= (sizeof numRecs + sizeof recSize) && (status == OK); recSize /= 2)
-            for (unsigned i = 0; i < 10 && status == OK; ++i, ++numRecs)
-            {
+            for (unsigned i = 0; i < 10 && status == OK; ++i, ++numRecs) {
                 memcpy(record, &numRecs, sizeof numRecs);
                 memcpy(record + (sizeof numRecs), &recSize, sizeof recSize);
                 status = f.insertRecord(record, recSize, rid);
-                if (status != OK)
-                {
+                if (status != OK) {
                     cerr << "*** Failed inserting record " << numRecs << ", of size " << recSize << endl;
                     break;
-                } else
-                    cout << " inserting record " << numRecs << endl;
+                } //else
+                //cout << " inserting record " << numRecs << endl;
             }
     }
 
     int seen[numRecs];
     memset(seen, 0, sizeof seen);
-    if (status == OK)
-    {
+    if (status == OK) {
         cout << "  - Check that all the records were inserted\n";
         scan = f.openScan(status);
         if (status != OK)
             cerr << "*** Error opening scan\n";
     }
 
-    if (status == OK)
-    {
+    if (status == OK) {
         int len;
-        while ((status = scan->getNext(rid, record, len)) == OK)
-        {
+        while ((status = scan->getNext(rid, record, len)) == OK) {
             unsigned recNum;
             memcpy(&recNum, record, sizeof recNum);
-            if (seen[recNum])
-            {
+            if (seen[recNum]) {
                 cerr << "*** Found record " << recNum << " twice!\n";
                 status = FAIL;
                 break;
@@ -451,18 +400,16 @@ int HeapDriver::test4()
             seen[recNum] = TRUE;
 
             memcpy(&recSize, record + sizeof recNum, sizeof recSize);
-            if (recSize != (unsigned) len)
-            {
+            if (recSize != (unsigned) len) {
                 cerr << "*** Record size mismatch: stored " << recSize << ", but retrieved " << len << endl;
                 status = FAIL;
                 break;
             }
-            cout << " seen record " << numRecs << endl;
+            //cout << " seen record " << numRecs << endl;
             --numRecs;
         }
 
-        if (status == DONE)
-        {
+        if (status == DONE) {
             if (numRecs)
                 cerr << "*** Scan missed " << numRecs << " records\n";
             else
@@ -478,8 +425,7 @@ int HeapDriver::test4()
 }
 
 
-int HeapDriver::test5()
-{
+int HeapDriver::test5() {
     cout << "\n  Test 5: Test some error conditions\n";
     Status status = OK;
     Scan *scan = 0;
@@ -489,26 +435,22 @@ int HeapDriver::test5()
     if (status != OK)
         cerr << "*** Error opening heap file\n";
 
-    if (status == OK)
-    {
+    if (status == OK) {
         cout << "  - Try to change the size of a record\n";
         scan = f.openScan(status);
         if (status != OK)
             cerr << "*** Error opening scan\n";
     }
-    if (status == OK)
-    {
+    if (status == OK) {
         int len;
         Rec rec;
         status = scan->getNext(rid, (char *) &rec, len);
         if (status != OK)
             cerr << "*** Error reading first record\n";
-        else
-        {
+        else {
             status = f.updateRecord(rid, (char *) &rec, len - 1);
             testFailure(status, HEAPFILE, "Shortening a record");
-            if (status == OK)
-            {
+            if (status == OK) {
                 status = f.updateRecord(rid, (char *) &rec, len + 1);
                 testFailure(status, HEAPFILE, "Lengthening a record");
             }
@@ -517,8 +459,7 @@ int HeapDriver::test5()
 
     delete scan;
 
-    if (status == OK)
-    {
+    if (status == OK) {
         cout << "  - Try to insert a record that's too long\n";
         char record[MINIBASE_PAGESIZE] = "";
         status = f.insertRecord(record, MINIBASE_PAGESIZE, rid);
@@ -531,8 +472,7 @@ int HeapDriver::test5()
 }
 
 
-int HeapDriver::test6()
-{
+int HeapDriver::test6() {
     cout << "\n Test 6: Test delete file\n";
     Status status;
 
@@ -540,8 +480,7 @@ int HeapDriver::test6()
     if (status != OK)
         cerr << "*** Error opening heap file\n";
 
-    if (status == OK)
-    {
+    if (status == OK) {
         cout << "  Try to delete the heap file" << endl;
         status = f.deleteFile();
         if (status != OK)
