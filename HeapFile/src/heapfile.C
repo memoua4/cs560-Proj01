@@ -146,6 +146,10 @@ int HeapFile::getRecCnt()
  */
 Status HeapFile::insertRecord(char *recPtr, int recLen, RID &outRid)
 {
+
+    if ( recLen > 1000 ) 
+        return MINIBASE_CHAIN_ERROR(HEAPFILE, FAIL);
+
     HFPage *dirPage;
     PageId dirPageId = firstDirPageId;
     PageId nextDirPageId;
@@ -274,7 +278,7 @@ Status HeapFile::updateRecord(const RID &rid, char *recPtr, int recLen)
     if (recLen != foundLen) {
         MINIBASE_BM->unpinPage(rpDataPageId, false);
         MINIBASE_BM->unpinPage(rpDirPageId, false);
-        return FAIL;
+        return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
     }
 
     memcpy(foundRec, recPtr, recLen);
