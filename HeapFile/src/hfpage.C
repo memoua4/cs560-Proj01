@@ -71,7 +71,7 @@ void HFPage::setNextPage(PageId pageNo) {
 // RID of the new record is returned via rid parameter.
 Status HFPage::insertRecord(char *recPtr, int recLen, RID &rid) {
     // Ensure we have enough space to insert the record
-    if ((recLen + sizeof (slot_t)) > freeSpace)
+    if ((recLen + (int) sizeof (slot_t)) > freeSpace)
         return DONE;
 
     int i;
