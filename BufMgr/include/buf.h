@@ -9,6 +9,9 @@
 #include "db.h"
 #include "page.h"
 #include "new_error.h"
+#include <unordered_map>
+#include <vector>
+#include <functional>
 
 #define NUMBUF 20   
 // Default number of frames, artifically small number for ease of debugging.
@@ -36,7 +39,10 @@ class BufMgr {
 
 private: 
    unsigned int    numBuffers;
+    unordered_map<int, vector<int>, decltype(&hashID)> *hashTable = new unordered_map<int, vector<int>, decltype(&hashID)>(HTSIZE, hashID);
    // fill in this area
+
+    size_t hashID (const PageId id);
 public:
     Page* bufPool; // The actual buffer pool
     Descriptors * bufDescr;
