@@ -36,6 +36,9 @@ static error_string_table bufTable(BUFMGR,bufErrMsgs);
 
 BufMgr::BufMgr (int numbuf, Replacer *replacer) {
   // put your code here
+  numBuffers = numbuf;
+  bufPool = new Page[numbuf];
+  bufDescr = new Descriptors[numbuf];
 }
 
 //*************************************************************
@@ -43,6 +46,11 @@ BufMgr::BufMgr (int numbuf, Replacer *replacer) {
 //************************************************************
 BufMgr::~BufMgr(){
   // put your code here
+  Status status = flushAllPages();
+  if ( status != OK ) 
+    return;
+  delete [] bufPool;
+  delete[] bufDescr;
 }
 
 //*************************************************************
@@ -50,6 +58,7 @@ BufMgr::~BufMgr(){
 //************************************************************
 Status BufMgr::pinPage(PageId PageId_in_a_DB, Page*& page, int emptyPage) {
   // put your code here
+  Status status; // 
   return OK;
 }//end pinPage
 
@@ -66,6 +75,7 @@ Status BufMgr::unpinPage(PageId page_num, int dirty=FALSE, int hate = FALSE){
 //************************************************************
 Status BufMgr::newPage(PageId& firstPageId, Page*& firstpage, int howmany) {
   // put your code here
+
   return OK;
 }
 

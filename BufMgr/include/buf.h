@@ -24,6 +24,12 @@
 enum bufErrCodes  {HASHMEMORY, HASHDUPLICATEINSERT, HASHREMOVEERROR, HASHNOTFOUND, QMEMORYERROR, QEMPTY, INTERNALERROR, 
 			BUFFERFULL, BUFMGRMEMORYERROR, BUFFERPAGENOTFOUND, BUFFERPAGENOTPINNED, BUFFERPAGEPINNED};
 
+struct Descriptors {
+    PageId page_number;
+    int pin_count;
+    bool dirtybit;
+};
+
 class Replacer; // may not be necessary as described below in the constructor
 
 class BufMgr {
@@ -33,6 +39,7 @@ private:
    // fill in this area
 public:
     Page* bufPool; // The actual buffer pool
+    Descriptors * bufDescr;
 
     BufMgr (int numbuf, Replacer *replacer = 0); 
    	// Initializes a buffer manager managing "numbuf" buffers.
