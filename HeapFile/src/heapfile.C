@@ -71,7 +71,7 @@ HeapFile::HeapFile(const char *name, Status &returnStatus) {
 // Destructor
 HeapFile::~HeapFile() {
     // Just delete the file name, and the file if we have a temp file
-    if (strcmp(fileName, "XtempX") == 0)
+    if (strcmp(fileName, "XtempX") == 0 && file_deleted == false)
         deleteFile();
     delete[] fileName;
 }
