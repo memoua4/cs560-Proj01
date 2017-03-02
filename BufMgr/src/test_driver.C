@@ -6,10 +6,10 @@
 #include <iostream>
 #include <assert.h>
 
-#include "new_error.h"
+#include "../include/new_error.h"
 // include "/afs/cs.wisc.edu/u/j/g/jglarson/cs564/proj1/test_driver.h"
-#include "test_driver.h"
-#include <pwd.h>
+#include "../include/test_driver.h"
+#include <process.h>
 #include <unistd.h>
 
 //<<<<<<< test_driver.C

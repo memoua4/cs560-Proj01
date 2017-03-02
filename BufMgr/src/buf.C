@@ -3,7 +3,7 @@
 /*****************************************************************************/
 
 
-#include "buf.h"
+#include "../include/buf.h"
 
 
 // Define buffer manager error messages here
