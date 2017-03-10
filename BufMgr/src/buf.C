@@ -63,7 +63,35 @@ BufMgr::~BufMgr()
 //************************************************************
 Status BufMgr::pinPage(PageId PageId_in_a_DB, Page *&page, int emptyPage)
 {
-    // put your code here
+    Status status;
+    if (hashTable->find(PageId_in_a_DB) == hashTable->end()) {
+        // does not exists
+        int i = 0; 
+        for ( i = 0; i < numBuffers && bufPool[i] != NULL && bufDescr[i].page_number != INVALID_PAGE; i++ ) { }
+
+        if ( i == numBuffers ) {
+            // love hate relationship 
+            for ( int frame_replacement = 0; frame_replacement < numBuffers; frame_replacement++ ) {
+                
+            }
+            Page temp = bufPool[i];
+        } else {
+            status = MINIBASE_DB->read_page(PageId_in_a_DB, page);
+            if ( status != OK ) 
+                return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+            bufPool[i] = page;
+            bufDescr[i].page_number = PageId_in_a_DB;
+            bufDescr[i].pin_count = 1;
+            bufDescr[i].dirtybit = false;
+            bufDescr[i].love = 0;
+            bufDescr[i].hate = 0;
+            page = &bufPool[i];
+        }
+    } else {
+        int frame_no = hashTable->at(PageId_in_a_DB);
+        page = &bufPool[frame_no];
+        bufDescr[frame_no]++;
+    }
     return OK;
 }//end pinPage
 
@@ -105,8 +133,22 @@ Status BufMgr::unpinPage(PageId page_num, int dirty = FALSE, int hate = FALSE)
 Status BufMgr::newPage(PageId &firstPageId, Page *&firstpage, int howmany)
 {
     // put your code here
+    Status status = MINIBASE_DB->allocate_page(firstPageId, howmany);
+    if ( status != OK ) {
+        return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+    }
 
-    return OK;
+    status = pinPage(firstPageId, firstPage, TRUE);
+
+    if ( status != OK ) {
+        statusDeallocate = MINIBASE_DB->deallocate_page(firsPageId, howmany);
+        if ( statusDeallocate != OK ) {
+            return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+        }
+        return status;
+    }
+
+    return status;
 }
 
 //*************************************************************
@@ -126,10 +168,21 @@ Status BufMgr::freePage(PageId globalPageId)
 
 //*************************************************************
 //** This is the implementation of flushPage
-//************************************************************
+//************************************************************1
 Status BufMgr::flushPage(PageId pageid)
 {
-    // put your code here
+    if (hashTable->find(PageId_in_a_DB) == hashTable->end()) {
+        return MINIBASE_CHAIN_ERROR(BUFMGR, BUFFERPAGENOTFOUND);
+    }
+
+    int frame_no = hashTable->at(pageid);
+
+    Status status = MINIBASE_DB->write_page(pageid, bufPool[frame_no]);
+    if ( status != OK ) 
+        return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+    bufDescr[index].dirtybit = false; // page is written to disk. The file on memory is the same as the file on disk. reset the dirty bit to false
+
     return OK;
 }
 
@@ -152,8 +205,7 @@ Status BufMgr::flushAllPages()
 //************************************************************
 Status BufMgr::pinPage(PageId PageId_in_a_DB, Page *&page, int emptyPage, const char *filename)
 {
-    //put your code here
-    return OK;
+    return pinPage(PageId_in_a_DB, page, emptyPage);
 }
 
 //*************************************************************
@@ -170,5 +222,9 @@ Status BufMgr::unpinPage(PageId globalPageId_in_a_DB, int dirty, const char *fil
 unsigned int BufMgr::getNumUnpinnedBuffers()
 {
     //put your code here
-    return 0;
+    int numBufferPinned = 0;
+    for (int i = 0; i < numBuffers && bufPool[i] != NULL; i++ ) {
+        numBufferPinned++;
+    }
+    return numBufferPinned;
 }

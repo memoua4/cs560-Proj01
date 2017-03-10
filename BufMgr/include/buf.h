@@ -30,6 +30,8 @@ struct Descriptors {
     PageId page_number;
     int pin_count;
     bool dirtybit;
+    int hate;
+    int love;
 };
 
 class Replacer; // may not be necessary as described below in the constructor
