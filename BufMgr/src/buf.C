@@ -70,11 +70,42 @@ Status BufMgr::pinPage(PageId PageId_in_a_DB, Page *&page, int emptyPage)
         for ( i = 0; i < numBuffers && bufPool[i] != NULL && bufDescr[i].page_number != INVALID_PAGE; i++ ) { }
 
         if ( i == numBuffers ) {
-            // love hate relationship 
+            // look at all the most hated first 
             for ( int frame_replacement = 0; frame_replacement < numBuffers; frame_replacement++ ) {
-                
+                if ( bufDescr[frame_replacement].love == 0 && bufDescr[frame_replacement].hate > 0 && bufDescr[frame_replacement].pint_count == 0 ) {
+                    break;
+                }
             }
-            Page temp = bufPool[i];
+
+            if ( frame_replacement == numBuffers ) {
+                for ( frame_replacement = 0; frame_replacement < numBuffers; frame_replacement++) {
+                    if ( bufDescr[frame_replacement].pin_count == 0 ) 
+                        break;
+                }
+
+                if ( frame_replacement == numBuffers ) 
+                    return DONE;
+
+                bufPool[frame_replacement] = page;
+                bufDescr[frame_replacement].page_number = PageId_in_a_DB;
+                bufDescr[frame_replacement].pin_count = 1;
+                bufDescr[frame_replacement].dirtybit = false;
+                bufDescr[frame_replacement].love = 0;
+                bufDescr[frame_replacement].hate = 0;
+
+            } else {
+                // replace here
+                status = MINIBASE_DB->read_page(PageId_in_a_DB, page);
+                if ( status != OK ) 
+                    return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+                bufPool[frame_replacement] = page;
+                bufDescr[frame_replacement].page_number = PageId_in_a_DB;
+                bufDescr[frame_replacement].pin_count = 1;
+                bufDescr[frame_replacement].dirtybit = false;
+                bufDescr[frame_replacement].love = 0;
+                bufDescr[frame_replacement].hate = 0;
+            }
         } else {
             status = MINIBASE_DB->read_page(PageId_in_a_DB, page);
             if ( status != OK ) 
