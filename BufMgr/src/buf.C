@@ -40,6 +40,9 @@ BufMgr::BufMgr(int numbuf, Replacer *replacer)
     numBuffers = numbuf;
     bufPool = new Page[numbuf];
     bufDescr = new Descriptors[numbuf];
+    for (int i = 0; i < numbuf; i++) {
+        bufDescr[i].page_number = INVALID_PAGE;
+    }
     hashTable = new unordered_map<int, int, IDHash>(HTSIZE);
 
 }
@@ -63,65 +66,74 @@ BufMgr::~BufMgr()
 //************************************************************
 Status BufMgr::pinPage(PageId PageId_in_a_DB, Page *&page, int emptyPage)
 {
+    // put your code here
     Status status;
     if (hashTable->find(PageId_in_a_DB) == hashTable->end()) {
-        // does not exists
-        int i = 0; 
-        for ( i = 0; i < numBuffers && bufPool[i] != NULL && bufDescr[i].page_number != INVALID_PAGE; i++ ) { }
+        // loop through the entire buffer pool
+        unsigned int index;
+        for (index = 0; index < numBuffers && bufDescr[index].page_number != INVALID_PAGE; index++ ) {}
 
-        if ( i == numBuffers ) {
-            // look at all the most hated first 
-            for ( int frame_replacement = 0; frame_replacement < numBuffers; frame_replacement++ ) {
-                if ( bufDescr[frame_replacement].love == 0 && bufDescr[frame_replacement].hate > 0 && bufDescr[frame_replacement].pint_count == 0 ) {
-                    break;
+            // if index equals the number of buffers, it means that the buffer does not have any empty slots
+            if ( index == numBuffers ) {
+                // use love-hate relationship to find the 
+                for ( index = 0; index < numBuffers; index++ ) {
+                    if ( bufDescr[index].love == 0 && bufDescr[index].hate > 0 && bufDescr[index].pin_count == 0 ) {
+                        bufDescr[index].page_number = PageId_in_a_DB;
+                        bufDescr[index].pin_count = 1;
+                        bufDescr[index].dirtybit = false;
+                        bufDescr[index].love = 0;
+                        bufDescr[index].hate = 0;
+                        status = MINIBASE_DB->write_page(PageId_in_a_DB, &bufPool[index]);
+                        if ( status != OK ) 
+                            return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+
+                        if ( emptyPage != TRUE ) {
+                            status = MINIBASE_DB->read_page(PageId_in_a_DB, &bufPool[index]);
+                            if ( status != OK ) return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+                        }
+                        page = &bufPool[index];
+                        return OK;
+                    }
                 }
-            }
 
-            if ( frame_replacement == numBuffers ) {
-                for ( frame_replacement = 0; frame_replacement < numBuffers; frame_replacement++) {
-                    if ( bufDescr[frame_replacement].pin_count == 0 ) 
-                        break;
+                for (index = 0; index < numBuffers; index++) {
+                    if ( bufDescr[index].love > 0 && bufDescr[index].pin_count == 0 ) {
+                        bufDescr[index].page_number = PageId_in_a_DB;
+                        bufDescr[index].pin_count = 1;
+                        bufDescr[index].dirtybit = false;
+                        bufDescr[index].love = 0;
+                        bufDescr[index].hate = 0;
+                        status = MINIBASE_DB->write_page(PageId_in_a_DB, &bufPool[index]);
+                        if ( status != OK ) 
+                            return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+                        if ( emptyPage != TRUE ) {
+                            status = MINIBASE_DB->read_page(PageId_in_a_DB, &bufPool[index]);
+                            if ( status != OK ) return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+                        }
+                        page = &bufPool[index];
+                        return OK;
+                    }
                 }
 
-                if ( frame_replacement == numBuffers ) 
-                    return DONE;
-
-                bufPool[frame_replacement] = page;
-                bufDescr[frame_replacement].page_number = PageId_in_a_DB;
-                bufDescr[frame_replacement].pin_count = 1;
-                bufDescr[frame_replacement].dirtybit = false;
-                bufDescr[frame_replacement].love = 0;
-                bufDescr[frame_replacement].hate = 0;
-
+                return DONE;
             } else {
-                // replace here
+                // there is some space
                 status = MINIBASE_DB->read_page(PageId_in_a_DB, page);
                 if ( status != OK ) 
                     return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-
-                bufPool[frame_replacement] = page;
-                bufDescr[frame_replacement].page_number = PageId_in_a_DB;
-                bufDescr[frame_replacement].pin_count = 1;
-                bufDescr[frame_replacement].dirtybit = false;
-                bufDescr[frame_replacement].love = 0;
-                bufDescr[frame_replacement].hate = 0;
+                bufDescr[index].page_number = PageId_in_a_DB;
+                bufDescr[index].pin_count = 1;
+                bufDescr[index].dirtybit = false;
+                bufDescr[index].love = 0;
+                bufDescr[index].hate = 0;
+                page = &bufPool[index];
             }
-        } else {
-            status = MINIBASE_DB->read_page(PageId_in_a_DB, page);
-            if ( status != OK ) 
-                return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-            bufPool[i] = page;
-            bufDescr[i].page_number = PageId_in_a_DB;
-            bufDescr[i].pin_count = 1;
-            bufDescr[i].dirtybit = false;
-            bufDescr[i].love = 0;
-            bufDescr[i].hate = 0;
-            page = &bufPool[i];
-        }
     } else {
-        int frame_no = hashTable->at(PageId_in_a_DB);
-        page = &bufPool[frame_no];
-        bufDescr[frame_no]++;
+        // page exists so find where the frame number is
+        int frameNumber = hashTable->at(PageId_in_a_DB);
+        page = &bufPool[frameNumber];
+        // add to its pin count
+        bufDescr[frameNumber].pin_count++;
     }
     return OK;
 }//end pinPage
@@ -165,14 +177,15 @@ Status BufMgr::newPage(PageId &firstPageId, Page *&firstpage, int howmany)
 {
     // put your code here
     Status status = MINIBASE_DB->allocate_page(firstPageId, howmany);
+    Status statusDeallocate;    
     if ( status != OK ) {
         return MINIBASE_CHAIN_ERROR(BUFMGR, status);
     }
 
-    status = pinPage(firstPageId, firstPage, TRUE);
+    status = pinPage(firstPageId, firstpage, TRUE);
 
     if ( status != OK ) {
-        statusDeallocate = MINIBASE_DB->deallocate_page(firsPageId, howmany);
+        statusDeallocate = MINIBASE_DB->deallocate_page(firstPageId, howmany);
         if ( statusDeallocate != OK ) {
             return MINIBASE_CHAIN_ERROR(BUFMGR, status);
         }
@@ -199,20 +212,21 @@ Status BufMgr::freePage(PageId globalPageId)
 
 //*************************************************************
 //** This is the implementation of flushPage
-//************************************************************1
+//************************************************************
 Status BufMgr::flushPage(PageId pageid)
 {
-    if (hashTable->find(PageId_in_a_DB) == hashTable->end()) {
-        return MINIBASE_CHAIN_ERROR(BUFMGR, BUFFERPAGENOTFOUND);
+    // put your code here
+    if (hashTable->find(pageid) == hashTable->end()) {
+        return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGENOTFOUND);
     }
 
-    int frame_no = hashTable->at(pageid);
+    int frameNumber = hashTable->at(pageid);
 
-    Status status = MINIBASE_DB->write_page(pageid, bufPool[frame_no]);
+    Status status = MINIBASE_DB->write_page(pageid, &bufPool[frameNumber]);
     if ( status != OK ) 
         return MINIBASE_CHAIN_ERROR(BUFMGR, status);
 
-    bufDescr[index].dirtybit = false; // page is written to disk. The file on memory is the same as the file on disk. reset the dirty bit to false
+    bufDescr[frameNumber].dirtybit = false; // page is written to disk. The file on memory is the same as the file on disk. reset the dirty bit to false
 
     return OK;
 }
@@ -236,6 +250,7 @@ Status BufMgr::flushAllPages()
 //************************************************************
 Status BufMgr::pinPage(PageId PageId_in_a_DB, Page *&page, int emptyPage, const char *filename)
 {
+    //put your code here
     return pinPage(PageId_in_a_DB, page, emptyPage);
 }
 
@@ -253,9 +268,10 @@ Status BufMgr::unpinPage(PageId globalPageId_in_a_DB, int dirty, const char *fil
 unsigned int BufMgr::getNumUnpinnedBuffers()
 {
     //put your code here
-    int numBufferPinned = 0;
-    for (int i = 0; i < numBuffers && bufPool[i] != NULL; i++ ) {
-        numBufferPinned++;
+    int numOfBuffers = 0;
+    for ( unsigned int i = 0; i < numBuffers; i++ ) {
+        if ( bufDescr[i].page_number != INVALID_PAGE ) 
+            numOfBuffers++;
     }
-    return numBufferPinned;
+    return numOfBuffers;
 }

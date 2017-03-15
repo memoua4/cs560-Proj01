@@ -9,7 +9,7 @@
 
 #include "../include/buf.h"
 #include "../include/db.h"
-#include <process.h>
+#include <pwd.h>
 
 
 #include "../include/BMTester.h"
