@@ -76,7 +76,7 @@ Status BufMgr::pinPage(PageId PageId_in_a_DB, Page *&page, int emptyPage) {
 
             // Find the "most hated" page
             for (index = 0; index < numBuffers; index++) {
-                if (bufDescr[index].love == 0 && bufDescr[index].hate >= 0 && bufDescr[index].pin_count == 0) {
+                if (bufDescr[index].love == 0 && bufDescr[index].hate > 0 && bufDescr[index].pin_count == 0) {
                     if (indexToReplace == -1) {
                         indexToReplace = index;
                     } else {
@@ -89,11 +89,11 @@ Status BufMgr::pinPage(PageId PageId_in_a_DB, Page *&page, int emptyPage) {
             // If no pages are hated, look through the loved pages
             if (indexToReplace == -1) {
                 for (index = 0; index < numBuffers; index++) {
-                    if (bufDescr[index].love > 0 && bufDescr[index].hate == 0 && bufDescr[index].pin_count == 0) {
+                    if (bufDescr[index].love > 0 && bufDescr[index].pin_count == 0) {
                         if (indexToReplace == -1) {
                             indexToReplace = index;
                         } else {
-                            if (bufDescr[indexToReplace].love > bufDescr[index].love)
+                            if (bufDescr[indexToReplace].love < bufDescr[index].love)
                                 indexToReplace = index;
                         }
                     }
@@ -166,10 +166,22 @@ Status BufMgr::unpinPage(PageId page_num, int dirty = FALSE, int hate = FALSE) {
     if (pageDescr->pin_count == 0)
         return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGENOTPINNED);
     pageDescr->pin_count = pageDescr->pin_count - 1;
+
     if (hate == true)
+    {
         pageDescr->hate++;
+        for (int i = 0; i < numBuffers; i++)
+            if (bufDescr[i].page_number != INVALID_PAGE)
+                if (bufDescr[i].hate > 0) bufDescr[i].hate++;
+    }
     else
+    {
         pageDescr->love++;
+        for (int i = 0; i < numBuffers; i++)
+            if (bufDescr[i].page_number != INVALID_PAGE)
+                if (bufDescr[i].love > 0) bufDescr[i].love++;
+    }
+
     if (pageDescr->pin_count == 0) {
         // The page is ready to be replaced
     }
@@ -205,10 +217,11 @@ Status BufMgr::newPage(PageId &firstPageId, Page *&firstpage, int howmany) {
 //************************************************************
 Status BufMgr::freePage(PageId globalPageId) {
     // Begin by grabbing the frame corresponding to the page
-    // If it is found unpin the page first
-    if (hashTable->find(globalPageId) != hashTable->end()) {
-        unpinPage(globalPageId);
+    int frameNumber = hashTable->at(globalPageId);
+    if (bufDescr[frameNumber].pin_count != 0) {
+        return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGEPINNED);
     }
+
     MINIBASE_DB->deallocate_page(globalPageId);
     return OK;
 }

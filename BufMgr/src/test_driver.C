@@ -193,9 +193,9 @@ Status TestDriver::runAllTests()
     Status answer = OK;
     runTest( answer, &TestDriver::test1 );
     runTest( answer, &TestDriver::test2 );
-    // runTest( answer, &TestDriver::test3 );
-    // runTest( answer, &TestDriver::test4 );
-    // runTest( answer, &TestDriver::test5 );
-    // runTest( answer, &TestDriver::test6 );
+    runTest( answer, &TestDriver::test3 );
+    runTest( answer, &TestDriver::test4 );
+    runTest( answer, &TestDriver::test5 );
+    runTest( answer, &TestDriver::test6 );
     return answer;
 }
