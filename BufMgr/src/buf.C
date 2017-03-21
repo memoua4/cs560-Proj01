@@ -267,6 +267,7 @@ Status BufMgr::flushPage(PageId pageid) {
 //** This is the implementation of flushAllPages
 //************************************************************
 Status BufMgr::flushAllPages() {
+    // loops through the number of buffers and flush all the pages
     for (unsigned int i = 0; i < numBuffers; i++)
         if (bufDescr[i].dirtybit == true)
             flushPage(bufDescr[i].page_number);
