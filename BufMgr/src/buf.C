@@ -61,6 +61,11 @@ BufMgr::~BufMgr() {
 
 //*************************************************************
 //** This is the implementation of pinPage
+    // Check if this page is in buffer pool, otherwise
+    // find a frame for this page, read in and pin it.
+    // also write out the old page if it's dirty before reading
+    // if emptyPage==TRUE, then actually no read is done to bring
+    // the page
 //************************************************************
 Status BufMgr::pinPage(PageId PageId_in_a_DB, Page *&page, int emptyPage) {
     // put your code here
@@ -190,25 +195,32 @@ Status BufMgr::unpinPage(PageId page_num, int dirty = FALSE, int hate = FALSE) {
 
 //*************************************************************
 //** This is the implementation of newPage
+    // call DB object to allocate a run of new pages and
+    // find a frame in the buffer pool for the first page
+    // and pin it. If buffer is full, ask DB to deallocate
+    // all these pages and return error
 //************************************************************
 Status BufMgr::newPage(PageId &firstPageId, Page *&firstpage, int howmany) {
     // put your code here
+    // Tells the DBMS to allocate a new page 
     Status status = MINIBASE_DB->allocate_page(firstPageId, howmany);
     Status statusDeallocate;
-    if (status != OK) {
+    if (status != OK) { // if the DBMS did not allcoate page apporpriately, it shoudl return an error message
         return MINIBASE_CHAIN_ERROR(BUFMGR, status);
     }
 
-    status = pinPage(firstPageId, firstpage, TRUE);
+    status = pinPage(firstPageId, firstpage, TRUE); // attempts to pin the page 
 
-    if (status != OK) {
+    // if the Buffer Manager fails to pin the page, the Buffer Manager calls the DMBS to deallocate the page 
+    // no new existing pages exist anymore
+    if (status != OK) { 
         statusDeallocate = MINIBASE_DB->deallocate_page(firstPageId, howmany);
         if (statusDeallocate != OK) {
-            return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+            return MINIBASE_CHAIN_ERROR(BUFMGR, statusDeallocate);
         }
-        return status;
     }
 
+    // returns OK if the new page is allocated, otherwise it returns a different result 
     return status;
 }
 
@@ -228,17 +240,22 @@ Status BufMgr::freePage(PageId globalPageId) {
 
 //*************************************************************
 //** This is the implementation of flushPage
+    // Used to flush a particular page of the buffer pool to disk
+    // Should call the write_page method of the DB class
 //************************************************************
 Status BufMgr::flushPage(PageId pageid) {
-    // put your code here
+    // first find if the page exists in the hash table 
+    // if it doesn't exist, it returns an error message   
     if (hashTable->find(pageid) == hashTable->end()) {
         return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGENOTFOUND);
     }
 
+    // find the frame number of where the page is located in the buffer pool 
     int frameNumber = hashTable->at(pageid);
 
+    // write the page on memory to disk - now memory and disk have same information 
     Status status = MINIBASE_DB->write_page(pageid, &bufPool[frameNumber]);
-    if (status != OK)
+    if (status != OK) // if the DBMS had trouble writing the page, it should return an error message 
         return MINIBASE_CHAIN_ERROR(BUFMGR, status);
 
     bufDescr[frameNumber].dirtybit = false; // page is written to disk. The file on memory is the same as the file on disk. reset the dirty bit to false
@@ -261,9 +278,10 @@ Status BufMgr::flushAllPages() {
 /*** Methods for compatibility with project 1 ***/
 //*************************************************************
 //** This is the implementation of pinPage
+    // Should be equivalent to the above pinPage()
+    // Necessary for backward compatibility with project 1
 //************************************************************
 Status BufMgr::pinPage(PageId PageId_in_a_DB, Page *&page, int emptyPage, const char *filename) {
-    //put your code here
     return pinPage(PageId_in_a_DB, page, emptyPage);
 }
 
@@ -276,13 +294,18 @@ Status BufMgr::unpinPage(PageId globalPageId_in_a_DB, int dirty, const char *fil
 
 //*************************************************************
 //** This is the implementation of getNumUnpinnedBuffers
+// Get number of unpinned buffers
 //************************************************************
 unsigned int BufMgr::getNumUnpinnedBuffers() {
     //put your code here
     int numOfBuffers = 0;
     for (unsigned int i = 0; i < numBuffers; i++) {
-        if (bufDescr[i].page_number != INVALID_PAGE)
+        // we have to make sure that the page number is not invalid (because if it is invalid, no page has been pinned in that buffer)
+        // the pin count of the page should be zero (indicating the page has been unpinned) 
+        // if it fits all these criteria, it will increment the numOfBuffers (indicates how many pages are unpinned) 
+        if ( bufDescr[i].page_number != INVALID_PAGE && bufDescr[i].pin_count == 0 )
             numOfBuffers++;
     }
+    // return number unpinned buffers 
     return numOfBuffers;
 }
