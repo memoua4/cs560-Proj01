@@ -57,9 +57,8 @@ private:
     // hashTable.emplace(key, value) =          hashTable.put(key, value)
     // hashTable.at(key) =                      hashTable.get(key)
     // hashTable.find(key) == hashTable.end() = !hashTable.containsKey(key)
+    // hashTable.erase(key) =                   hashTable.remove(key)
     unordered_map<int, int, IDHash> *hashTable;
-    // fill in this area
-
 public:
     Page* bufPool; // The actual buffer pool
     Descriptors * bufDescr;
