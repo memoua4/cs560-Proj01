@@ -189,7 +189,7 @@ Status BufMgr::pinPage(PageId PageId_in_a_DB, Page *&page, int emptyPage) {
 // put it in a group of replacement candidates.
 // if pincount=0 before this call, return error.
 //************************************************************
-Status BufMgr::unpinPage(PageId page_num, int dirty, int hate) {
+Status BufMgr::unpinPage(PageId page_num, int dirty = FALSE, int hate = FALSE) {
     // Begin by grabbing the frame corresponding to the page
     // Make sure we're not trying to unpin a page that is not pinned
     if (hashTable->find(page_num) == hashTable->end()) {
