@@ -35,25 +35,25 @@ static error_string_table bufTable(BUFMGR, bufErrMsgs);
 //************************************************************
 
 BufMgr::BufMgr(int numbuf, Replacer *replacer) {
-    // put your code here
+    // Initialize the fields of the class
     numBuffers = numbuf;
     bufPool = new Page[numbuf];
     bufDescr = new Descriptors[numbuf];
+    // Ensure that each bufDescr is set to be an invalid page
     for (int i = 0; i < numbuf; i++) {
         bufDescr[i].page_number = INVALID_PAGE;
     }
+    // Initialize our hash table
     hashTable = new unordered_map<int, int, IDHash>(HTSIZE);
-
 }
 
 //*************************************************************
 //** This is the implementation of ~BufMgr
 //************************************************************
 BufMgr::~BufMgr() {
-    // put your code here
-    Status status = flushAllPages();
-    if (status != OK)
-        return;
+    // First flush all the pages in the buffer manager to disk
+    flushAllPages();
+    // Free the memory used by the buffer manager
     delete[] bufPool;
     delete[] bufDescr;
     delete hashTable;
@@ -68,36 +68,52 @@ BufMgr::~BufMgr() {
     // the page
 //************************************************************
 Status BufMgr::pinPage(PageId PageId_in_a_DB, Page *&page, int emptyPage) {
-    // put your code here
     Status status;
+    // Check to see if the page is already in the hashTable and therefore has a frame
     if (hashTable->find(PageId_in_a_DB) == hashTable->end()) {
-        // loop through the entire buffer pool
+        // If it is not yet pinned in the buffer pool, find the correct slot to put the page in
         unsigned int index;
+        // Check if any of the buffer pool's pages are open
         for (index = 0; index < numBuffers && bufDescr[index].page_number != INVALID_PAGE; index++) {}
 
         // if index equals the number of buffers, it means that the buffer does not have any empty slots
         if (index == numBuffers) {
+            // This is the index of the page we will replace. It is determined by the love/hate replacement
+            // policy
             int indexToReplace = -1;
 
-            // Find the "most hated" page
+            // Find the "most hated" page first, if there are no hated pages indexToReplace will = -1
             for (index = 0; index < numBuffers; index++) {
+                // A page is replaceable if it has 0 love, and some amount of hate, and is not pinned.
                 if (bufDescr[index].love == 0 && bufDescr[index].hate > 0 && bufDescr[index].pin_count == 0) {
+                    // If we have a valid candidate, we either replace the current candidate if this page is
+                    // more hated, or if we do not yet have a valid candidate then this is the one!
                     if (indexToReplace == -1) {
+                        // Set the indexToReplace to be the current index
                         indexToReplace = index;
                     } else {
+                        // If we already have a hated page, get the MOST HATED page and set that
+                        // as the page to replace
                         if (bufDescr[indexToReplace].hate > bufDescr[index].hate)
                             indexToReplace = index;
                     }
                 }
             }
 
-            // If no pages are hated, look through the loved pages
+            // If no pages are hated, look through the loved pages. Choose the least loved page
             if (indexToReplace == -1) {
+                // Loop through each page
                 for (index = 0; index < numBuffers; index++) {
+                    // A page must be loved (love > 0), and not be pinned to be replaced
                     if (bufDescr[index].love > 0 && bufDescr[index].pin_count == 0) {
+                        // Same as the hate policy, except we find the least loved page
                         if (indexToReplace == -1) {
+                            // If we don't yet have a loved page, and we found one, just assign
+                            // it to our index to replace
                             indexToReplace = index;
                         } else {
+                            // If we found a page with less love than the current indexToReplace,
+                            // then we replace it instead
                             if (bufDescr[indexToReplace].love < bufDescr[index].love)
                                 indexToReplace = index;
                         }
@@ -105,43 +121,60 @@ Status BufMgr::pinPage(PageId PageId_in_a_DB, Page *&page, int emptyPage) {
                 }
             }
 
+            // If we found a page to replace, perform the replace
             if (indexToReplace != -1) {
+                // Store the old page id off
                 PageId oldPageId = bufDescr[indexToReplace].page_number;
+                // Update the page id, pin count, dirtyBit, love, and hate
                 bufDescr[indexToReplace].page_number = PageId_in_a_DB;
                 bufDescr[indexToReplace].pin_count = 1;
                 bufDescr[indexToReplace].dirtybit = false;
                 bufDescr[indexToReplace].love = 0;
                 bufDescr[indexToReplace].hate = 0;
+                // Write the old page to disk
                 status = MINIBASE_DB->write_page(oldPageId, &bufPool[indexToReplace]);
+                // Make sure the write worked
                 if (status != OK)
                     return MINIBASE_CHAIN_ERROR(BUFMGR, status);
-                if (emptyPage != TRUE) {
+                // If the page should not be empty, read it from the buffer pool, otherwise
+                // just leave it blank
+                if (emptyPage == FALSE) {
                     status = MINIBASE_DB->read_page(PageId_in_a_DB, &bufPool[indexToReplace]);
                     if (status != OK) return MINIBASE_CHAIN_ERROR(BUFMGR, status);
                 }
+                // Point the page at the location of the buffer pool
                 page = &bufPool[indexToReplace];
+                // Erase the old page id from the hash table
                 hashTable->erase(oldPageId);
+                // Put the new page id with the frame number
                 hashTable->emplace(PageId_in_a_DB, indexToReplace);
+
+                // Everything went ok!
                 return OK;
             }
 
+            // Else, either all pages are pinned, or no pages were replaceable
             return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERFULL);
         } else {
-            // there is some space
+            // there is some space left in the buffer pool so just add to the end
             status = MINIBASE_DB->read_page(PageId_in_a_DB, &bufPool[index]);
             if (status != OK)
                 return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+            // Initialize the bufDescr
             bufDescr[index].page_number = PageId_in_a_DB;
             bufDescr[index].pin_count = 1;
             bufDescr[index].dirtybit = false;
             bufDescr[index].love = 0;
             bufDescr[index].hate = 0;
+            // Point the page at the location in the buffer pool
             page = &bufPool[index];
+            // Put the key&frame number into the hashtable
             hashTable->emplace(PageId_in_a_DB, index);
         }
     } else {
         // page exists so find where the frame number is
         int frameNumber = hashTable->at(PageId_in_a_DB);
+        // Point the page at the buffer pool page
         page = &bufPool[frameNumber];
         // add to its pin count
         bufDescr[frameNumber].pin_count++;
@@ -164,32 +197,37 @@ Status BufMgr::unpinPage(PageId page_num, int dirty = FALSE, int hate = FALSE) {
     }
     // Grab the frame number
     int frameNumber = hashTable->at(page_num);
+    // Grab the page descriptor
     Descriptors *pageDescr = &bufDescr[frameNumber];
+    // If the page is dirty, flush it
     if (dirty == true) {
         flushPage(page_num);
     }
+    // Ensure that the page is pinned
     if (pageDescr->pin_count == 0)
         return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGENOTPINNED);
+    // Reduce the pin count
     pageDescr->pin_count = pageDescr->pin_count - 1;
 
-    if (hate == true)
-    {
+    // If we hate the page, increment the page's hate
+    if (hate == true) {
         pageDescr->hate++;
+        // Then go through each page, and if it is hated, increment its hate. This ensures
+        // the MRU policy be replacing pages that have the highest hate
         for (int i = 0; i < numBuffers; i++)
             if (bufDescr[i].page_number != INVALID_PAGE)
                 if (bufDescr[i].hate > 0) bufDescr[i].hate++;
-    }
-    else
-    {
+    } else {
+        // If the page is loved, increment that page's love
         pageDescr->love++;
+        // Go through each page, and if the page is loved, increment its love. This
+        // ensures the LRU policy since we can find the least loved pages
         for (int i = 0; i < numBuffers; i++)
             if (bufDescr[i].page_number != INVALID_PAGE)
                 if (bufDescr[i].love > 0) bufDescr[i].love++;
     }
 
-    if (pageDescr->pin_count == 0) {
-        // The page is ready to be replaced
-    }
+    // We're done!
     return OK;
 }
 
@@ -230,11 +268,17 @@ Status BufMgr::newPage(PageId &firstPageId, Page *&firstpage, int howmany) {
 Status BufMgr::freePage(PageId globalPageId) {
     // Begin by grabbing the frame corresponding to the page
     int frameNumber = hashTable->at(globalPageId);
+    // Make sure that the page is not pinned so we can free it
     if (bufDescr[frameNumber].pin_count != 0) {
         return MINIBASE_FIRST_ERROR(BUFMGR, BUFFERPAGEPINNED);
     }
 
-    MINIBASE_DB->deallocate_page(globalPageId);
+    // Attempt to deallocate the page
+    Status status = MINIBASE_DB->deallocate_page(globalPageId);
+    if (status != OK) {
+        return MINIBASE_CHAIN_ERROR(BUFMGR, status);
+    }
+
     return OK;
 }
 
