@@ -214,7 +214,7 @@ Status BufMgr::unpinPage(PageId page_num, int dirty = FALSE, int hate = FALSE) {
         pageDescr->hate++;
         // Then go through each page, and if it is hated, increment its hate. This ensures
         // the MRU policy be replacing pages that have the highest hate
-        for (int i = 0; i < numBuffers; i++)
+        for (unsigned int i = 0; i < numBuffers; i++)
             if (bufDescr[i].page_number != INVALID_PAGE)
                 if (bufDescr[i].hate > 0) bufDescr[i].hate++;
     } else {
@@ -222,7 +222,7 @@ Status BufMgr::unpinPage(PageId page_num, int dirty = FALSE, int hate = FALSE) {
         pageDescr->love++;
         // Go through each page, and if the page is loved, increment its love. This
         // ensures the LRU policy since we can find the least loved pages
-        for (int i = 0; i < numBuffers; i++)
+        for (unsigned int i = 0; i < numBuffers; i++)
             if (bufDescr[i].page_number != INVALID_PAGE)
                 if (bufDescr[i].love > 0) bufDescr[i].love++;
     }
