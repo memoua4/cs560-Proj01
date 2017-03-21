@@ -345,10 +345,9 @@ unsigned int BufMgr::getNumUnpinnedBuffers() {
     //put your code here
     int numOfBuffers = 0;
     for (unsigned int i = 0; i < numBuffers; i++) {
-        // we have to make sure that the page number is not invalid (because if it is invalid, no page has been pinned in that buffer)
         // the pin count of the page should be zero (indicating the page has been unpinned) 
         // if it fits all these criteria, it will increment the numOfBuffers (indicates how many pages are unpinned) 
-        if ( bufDescr[i].page_number != INVALID_PAGE && bufDescr[i].pin_count == 0 )
+        if ( bufDescr[i].pin_count == 0 )
             numOfBuffers++;
     }
     // return number unpinned buffers 
