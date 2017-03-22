@@ -1,12 +1,10 @@
-# CS560 Makefile
-#
-# Makefile for CS560 Minibase project.  Needs GNU make.
+# Makefile for the Minibase project.  Needs GNU make.
 #
 # Warning: make depend overwrites this file.
 
 .PHONY: depend clean backup setup
 
-MAIN=heaptest
+MAIN=hfpage
 
 MINIBASE=..
 
@@ -16,12 +14,12 @@ CFLAGS= -DUNIX -Wall -g -std=gnu++11
 
 INCLUDES = -I${MINIBASE}/include -I.
 
-# LFLAGS= -L${MINIBASE}/lib -liberty -lheapfile -lm
-LFLAGS= -L${MINIBASE}/lib -L${MINIBASE}/lib32 -ldb -lm
+#LFLAGS= -L${MINIBASE}/lib -liberty -lm
+#LFLAGS= -L${MINIBASE}/lib32 -lbm -ldb -lm
+LFLAGS= -L${MINIBASE}/lib32 -L${MINIBASE}/lib -ldb -lm
 
-SRCS = main.C heapfile.C heap_driver.C test_driver.C \
-	 	new_error.C page.C system_defs.C \
-		scan.C hfpage.C buf.C
+SRCS = main.C hfpage.C hfp_driver.C test_driver.C \
+		new_error.C page.C system_defs.C buf.C
 
 OBJS = $(SRCS:.C=.o)
 
@@ -35,7 +33,7 @@ depend: $(SRCS)
 	makedepend $(INCLUDES) $^
 
 clean:
-	rm -f *.o *~ $(MAIN) $(MAKECLEANGARBAGE) 
+	rm -f *.o *~ $(MAIN) $(MAKECLEANGARBAGE)
 
 backup:
 	mkdir bak
@@ -46,4 +44,4 @@ setup:
 	/bin/cp -i $(MINIBASE)/src/*.[Ch] .
 	-/bin/cp -i $(MINIBASE)/src/README .
 
-# DO NOT DELETE THIS LINE -- make depend needs it 
+# DO NOT DELETE THIS LINE -- make depend needs it

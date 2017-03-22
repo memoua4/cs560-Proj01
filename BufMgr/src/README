@@ -11,3 +11,7 @@ main.C, test_driver.C, BMTester.C: the testing programs
 
 ErrProc.sample: a sample program to help you use the error protocol.
 
+To assist in the creation of the hashmap, we used the c++11 standard 
+unordered_map<keyType, valueType, HashFunction>. This means that the 
+makefile compilation flags needed "-std=c++11" or "-std=gnu++11". This flag was added to each of the makefile
+projects (hfpage, heapfile, and bufmgr)
