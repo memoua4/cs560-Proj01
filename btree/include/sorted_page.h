@@ -23,6 +23,7 @@
 class SortedPage : public HFPage {
 private:
     // No private variables should be declared.
+    // We need a way to compare two records
 
 public:
 

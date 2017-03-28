@@ -39,7 +39,7 @@
 typedef enum {
     INDEX,
     LEAF
-} nodetype;
+} NodeType;
 
 
 /*
@@ -59,22 +59,22 @@ typedef enum {
 
 
 /*
- * Keytype union: used to discover the max keysize, and for minimal 
+ * KeyType union: used to discover the max keysize, and for minimal
  * static type checking in key package/unpackage functions (see below).
  */
 
-union Keytype {
+union KeyType {
     int intkey;
     char charkey[MAX_KEY_SIZE1];
 };
 
 
 /*
- * Datatype union: used to discover the max data size, and for minimal 
+ * DataType union: used to discover the max data size, and for minimal
  * static type checking in key package/unpackage functions (see below).
  */
 
-union Datatype {
+union DataType {
     PageId pageNo;  // for index page entries
     RID rid;     // for leaf page entries
 };
@@ -91,8 +91,8 @@ union Datatype {
  */
 
 struct KeyDataEntry {
-    Keytype key;
-    Datatype data;
+    KeyType key;
+    DataType data;
 };
 
 /*
@@ -104,7 +104,7 @@ struct KeyDataEntry {
  * make_entry packages a key and a data value into a chunk of memory 
  * large enough to hold it (the first parameter).  Note that the 
  * resultant KeyDataEntry cannot be accessed by its members because
- * the Datatype member may start after the actual beginning of the
+ * the DataType member may start after the actual beginning of the
  * data value stored here.  The real length of the resulting <key,data>
  * pair is returned in *pentry_len.
  *
@@ -131,7 +131,7 @@ int keyCompare(const void *key1, const void *key2, AttrType t);
 
 void make_entry(KeyDataEntry *target,
                 AttrType key_type, const void *key,
-                nodetype ndtype, Datatype data,
+                NodeType ndtype, DataType data,
                 int *pentry_len);
 
 /*
@@ -140,9 +140,9 @@ void make_entry(KeyDataEntry *target,
  * of the data chunk (to calculate data start of the <data> part).
  */
 
-void get_key_data(void *targetkey, Datatype *targetdata,
+void get_key_data(void *targetkey, DataType *targetdata,
                   KeyDataEntry *psource, int entry_len,
-                  nodetype ndtype);
+                  NodeType ndtype);
 
 /*
  * get_key_length: return key length in given key_type
@@ -153,6 +153,6 @@ int get_key_length(const void *key, const AttrType key_type);
  * get_key_data_length: return (key+data) length in given key_type
  */
 int get_key_data_length(const void *key, const AttrType key_type,
-                        const nodetype ndtype);
+                        const NodeType ndtype);
 
 #endif

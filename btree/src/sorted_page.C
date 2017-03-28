@@ -5,6 +5,8 @@
  * Edited by Young-K. Suh (yksuh@cs.arizona.edu) 03/27/14 CS560 Database Systems Implementation 
  */
 
+#include <cstdlib>
+#include <algorithm>
 #include "../include/sorted_page.h"
 #include "../include/btindex_page.h"
 #include "../include/btleaf_page.h"
@@ -14,7 +16,6 @@ const char *SortedPage::Errors[SortedPage::NR_ERRORS] = {
         //Insert Record Failed (SortedPage::insertRecord),
         //Delete Record Failed (SortedPage::deleteRecord,
 };
-
 
 /*
  *  Status SortedPage::insertRecord(AttrType key_type, 
@@ -39,6 +40,18 @@ Status SortedPage::insertRecord(AttrType key_type,
                                 int recLen,
                                 RID &rid) {
     Status status = HFPage::insertRecord(recPtr, recLen, rid);
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(SORTEDPAGE, status);
+
+    if (key_type != attrInteger && key_type != attrString)
+        return MINIBASE_FIRST_ERROR(SORTEDPAGE, ATTRNOTFOUND);
+
+    status = HFPage::insertRecord(recPtr, recLen, rid);
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(SORTEDPAGE, status);
+
+    // Now sort the data
+
 
     return OK;
 }
