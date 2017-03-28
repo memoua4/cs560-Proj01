@@ -7,6 +7,7 @@
 
 #include <cstdlib>
 #include <algorithm>
+#include <cstring>
 #include "../include/sorted_page.h"
 #include "../include/btindex_page.h"
 #include "../include/btleaf_page.h"
@@ -35,7 +36,7 @@ const char *SortedPage::Errors[SortedPage::NR_ERRORS] = {
  *    o rid is the record id of the record inserted.
  */
 
-Status SortedPage::insertRecord(AttrType key_type,
+Status SortedPage::insertRecord(AttrType keyType,
                                 char *recPtr,
                                 int recLen,
                                 RID &rid) {
@@ -43,15 +44,35 @@ Status SortedPage::insertRecord(AttrType key_type,
     if (status != OK)
         return MINIBASE_CHAIN_ERROR(SORTEDPAGE, status);
 
-    if (key_type != attrInteger && key_type != attrString)
+    if (keyType != attrInteger && keyType != attrString)
         return MINIBASE_FIRST_ERROR(SORTEDPAGE, ATTRNOTFOUND);
 
     status = HFPage::insertRecord(recPtr, recLen, rid);
     if (status != OK)
         return MINIBASE_CHAIN_ERROR(SORTEDPAGE, status);
 
-    // Now sort the data
-
+    // Now sort the data using a lambda function
+    std::sort(slot, slot + slotCnt, [](const slot_t first, const slot_t second) -> bool {
+        if (first.length == EMPTY_SLOT)
+            return false;
+        if (second.length == EMPTY_SLOT)
+            return true;
+        short firstOffset = first.offset;
+        short secondOffset = second.offset;
+        char *firstData = &data[firstOffset];
+        char *secondData = &data[secondOffset];
+        switch (keyType) {
+            case attrInteger:
+                int firstInt = *((int *) firstData);
+                int secondInt = *((int *) secondData);
+                return firstInt > secondInt;
+            case attrString:
+                int comparison = strcmp(firstData, secondData);
+                return comparison >= 0;
+            default:
+                return false;
+        }
+    });
 
     return OK;
 }
@@ -69,5 +90,10 @@ Status SortedPage::deleteRecord(const RID &rid) {
 }
 
 int SortedPage::numberOfRecords() {
-    return 0;
+    int numRecords = 0;
+    for (short i = 0; i < slotCnt; i++) {
+        if (slot[i].length != EMPTY_SLOT)
+            numRecords = numRecords + 1;
+    }
+    return numRecords;
 }
