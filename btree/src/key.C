@@ -51,20 +51,21 @@ int keyCompare(const void *key1, const void *key2, AttrType type) {
  */
 void make_entry(KeyDataEntry *target,
                 AttrType keyType, const void *key,
-                NodeType nodeType, DataType dataType,
+                NodeType nodeType, DataType data,
                 int *entryLength) {
     int keySize;
     switch (keyType) {
         case attrInteger:
+            int *keyTargetInt = &target->key.intkey;
             keySize = sizeof(int);
-            int keyValue = target->key.intkey;
-            memcpy(&keyValue, key, sizeof(int));
+            memcpy(keyTargetInt, key, sizeof(int));
             break;
         case attrString:
-            keySize = strlen((char *) key) + 1;
+            char *keyTargetStr = target->key.charkey;
+            keySize = strlen(keyTargetStr) + 1;
             if (keySize > MAX_KEY_SIZE1)
                 return;
-            strcpy(target->key.charkey, (char *) key);
+            strcpy(keyTargetStr, (char *) key);
             break;
         default:
             return;
@@ -74,11 +75,11 @@ void make_entry(KeyDataEntry *target,
     switch (nodeType) {
         case INDEX:
             dataSize = sizeof(PageId);
-            memcpy(target, &dataType.pageNo, dataSize);
+            memcpy(target + keySize, &data.pageNo, dataSize);
             break;
         case LEAF:
             dataSize = sizeof(RID);
-            memcpy(target, &dataType.rid, dataSize);
+            memcpy(target + keySize, &data.rid, dataSize);
             break;
         default:
             return;
@@ -112,8 +113,10 @@ void get_key_data(void *targetKey, DataType *targetData,
     if (source == NULL)
         source = new KeyDataEntry();
 
-    memcpy(targetKey, &source->key, keyLength);
-    memcpy(targetData, &source->data, dataLength);
+    if (targetKey != NULL)
+        memcpy(targetKey, &source, keyLength);
+    if (targetData != NULL)
+        memcpy(targetData, &source + keyLength, dataLength);
 }
 
 /*

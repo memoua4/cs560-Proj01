@@ -7,12 +7,12 @@
 
 #include "../include/btleaf_page.h"
 
-const char* BTLeafErrorMsgs[] = {
+const char *BTLeafErrorMsgs[] = {
 // OK,
 // Insert Record Failed,
 };
 static error_string_table btree_table(BTLEAFPAGE, BTLeafErrorMsgs);
-   
+
 /*
  * Status BTLeafPage::insertRec(const void *key,
  *                             AttrType key_type,
@@ -37,12 +37,22 @@ static error_string_table btree_table(BTLEAFPAGE, BTLeafErrorMsgs);
  */
 
 Status BTLeafPage::insertRec(const void *key,
-                              AttrType key_type,
-                              RID dataRid,
-                              RID& rid)
-{
-  // put your code here
-  return OK;
+                             AttrType key_type,
+                             RID dataRid,
+                             RID &rid) {
+    KeyDataEntry entry;
+    int entryLength;
+    DataType dataType;
+    dataType.rid = dataRid;
+    Status status;
+
+    make_entry(&entry, key_type, key, LEAF, dataType, &entryLength);
+
+    status = SortedPage::insertRecord(key_type, (char *) &entry, entryLength, rid);
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(BTLEAFPAGE, status);
+
+    return OK;
 }
 
 /*
@@ -58,10 +68,30 @@ Status BTLeafPage::insertRec(const void *key,
 
 Status BTLeafPage::get_data_rid(void *key,
                                 AttrType key_type,
-                                RID & dataRid)
-{
-  // put your code here
-  return OK;
+                                RID &dataRid) {
+    int low = 0;
+    int high = slotCnt;
+    int middle;
+
+    // Binary search while low <= high
+    while (low <= high) {
+        middle = (low + high) / 2;
+
+        void *key2 = data + slot[middle].offset;
+        int comparison = keyCompare(key, key2, key_type);
+        if (comparison == 0) { // Keys match
+            DataType *dataType = (DataType *) &dataRid;
+            KeyDataEntry *entry = (KeyDataEntry *) (data + slot[middle].offset);
+            get_key_data(NULL, dataType, entry, slot[middle].length, LEAF);
+            return OK;
+        } else if (comparison > 0) { // key > key2
+            high = middle - 1;
+        } else if (comparison < 0) { // key < key2
+            low = middle + 1;
+        }
+    }
+
+    return RECNOTFOUND;
 }
 
 /* 
@@ -76,18 +106,31 @@ Status BTLeafPage::get_data_rid(void *key,
  * RecordPage::get_next(), and break the flat record into its
  * two components: namely, the key and datarid. 
  */
-Status BTLeafPage::get_first (RID& rid,
-                              void *key,
-                              RID & dataRid)
-{ 
-  // put your code here
-  return OK;
+Status BTLeafPage::get_first(RID &rid,
+                             void *key,
+                             RID &dataRid) {
+    if (slotCnt == 0)
+        return MINIBASE_FIRST_ERROR(BTINDEXPAGE, NOMORERECS);
+
+    rid.pageNo = curPage;
+    rid.slotNo = -1;
+
+    return get_next(rid, key, dataRid);
 }
 
-Status BTLeafPage::get_next (RID& rid,
-                             void *key,
-                             RID & dataRid)
-{
-  // put your code here
-  return OK;
+Status BTLeafPage::get_next(RID &rid,
+                            void *key,
+                            RID &dataRid) {
+    rid.slotNo = rid.slotNo + 1;
+
+    if (rid.slotNo >= slotCnt)
+        return MINIBASE_FIRST_ERROR(BTLEAFPAGE, NOMORERECS);
+
+    DataType* dataType = (DataType *) &dataRid;
+
+    KeyDataEntry* entry = (KeyDataEntry *) (data + slot[rid.slotNo].offset);
+
+    get_key_data(key, dataType, entry, slot[rid.slotNo].length, INDEX);
+
+    return OK;
 }

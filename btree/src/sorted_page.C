@@ -47,10 +47,6 @@ Status SortedPage::insertRecord(AttrType keyType,
     if (keyType != attrInteger && keyType != attrString)
         return MINIBASE_FIRST_ERROR(SORTEDPAGE, ATTRNOTFOUND);
 
-    status = HFPage::insertRecord(recPtr, recLen, rid);
-    if (status != OK)
-        return MINIBASE_CHAIN_ERROR(SORTEDPAGE, status);
-
     // Now sort the data using a lambda function
     std::sort(slot, slot + slotCnt, [](const slot_t first, const slot_t second) -> bool {
         if (first.length == EMPTY_SLOT)
@@ -61,6 +57,8 @@ Status SortedPage::insertRecord(AttrType keyType,
         short secondOffset = second.offset;
         char *firstData = &data[firstOffset];
         char *secondData = &data[secondOffset];
+        return keyCompare(firstData, secondData, keyType) < 0;
+        /*
         switch (keyType) {
             case attrInteger:
                 int firstInt = *((int *) firstData);
@@ -71,7 +69,7 @@ Status SortedPage::insertRecord(AttrType keyType,
                 return comparison >= 0;
             default:
                 return false;
-        }
+        }*/
     });
 
     return OK;
