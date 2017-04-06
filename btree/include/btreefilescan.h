@@ -27,8 +27,14 @@ public:
 
     // destructor
     ~BTreeFileScan();
+    BTreeFileScan(BTreeFile *file, BTLeafPage *leaf);
 
 private:
+    BTreeFile *file;
+    BTLeafPage *currentLeaf;
+    RID currentLeafRID;
+    bool currentDeleted;
+
 
 };
 

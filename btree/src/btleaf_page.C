@@ -110,7 +110,7 @@ Status BTLeafPage::get_first(RID &rid,
                              void *key,
                              RID &dataRid) {
     if (slotCnt == 0)
-        return MINIBASE_FIRST_ERROR(BTINDEXPAGE, NOMORERECS);
+        return NOMORERECS;
 
     rid.pageNo = curPage;
     rid.slotNo = -1;
@@ -124,7 +124,7 @@ Status BTLeafPage::get_next(RID &rid,
     rid.slotNo = rid.slotNo + 1;
 
     if (rid.slotNo >= slotCnt)
-        return MINIBASE_FIRST_ERROR(BTLEAFPAGE, NOMORERECS);
+        return NOMORERECS;
 
     DataType* dataType = (DataType *) &dataRid;
 
