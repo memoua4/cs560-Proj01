@@ -5,440 +5,885 @@
  * Edited by Young-K. Suh (yksuh@cs.arizona.edu) 03/27/14 CS560 Database Systems Implementation 
  */
 
-#include "../include/minirel.h"
-#include "../include/buf.h"
-#include "../include/db.h"
-#include "../include/new_error.h"
-#include "../include/btfile.h"
-#include "../include/btreefilescan.h"
+#include "minirel.h"
+#include "buf.h"
+#include "db.h"
+#include "new_error.h"
+#include "btfile.h"
+#include "btreefilescan.h"
 
 // Define your error message here
 const char* BtreeErrorMsgs[] = {
-  // Possible error messages
-  // _OK
-  // CANT_FIND_HEADER
-  // CANT_PIN_HEADER,
-  // CANT_ALLOC_HEADER
-  // CANT_ADD_FILE_ENTRY
-  // CANT_UNPIN_HEADER
-  // CANT_PIN_PAGE
-  // CANT_UNPIN_PAGE
-  // INVALID_SCAN
-  // SORTED_PAGE_DELETE_CURRENT_FAILED
-  // CANT_DELETE_FILE_ENTRY
-  // CANT_FREE_PAGE,
-  // CANT_DELETE_SUBTREE,
-  // KEY_TOO_LONG
-  // INSERT_FAILED
-  // COULD_NOT_CREATE_ROOT
-  // DELETE_DATAENTRY_FAILED
-  // DATA_ENTRY_NOT_FOUND
-  // CANT_GET_PAGE_NO
-  // CANT_ALLOCATE_NEW_PAGE
-  // CANT_SPLIT_LEAF_PAGE
-  // CANT_SPLIT_INDEX_PAGE
+    // Possible error messages
+    // _OK
+    // CANT_FIND_HEADER
+    // CANT_PIN_HEADER,
+    // CANT_ALLOC_HEADER
+    // CANT_ADD_FILE_ENTRY
+    // CANT_UNPIN_HEADER
+    // CANT_PIN_PAGE
+    // CANT_UNPIN_PAGE
+    // INVALID_SCAN
+    // SORTED_PAGE_DELETE_CURRENT_FAILED
+    // CANT_DELETE_FILE_ENTRY
+    // CANT_FREE_PAGE,
+    // CANT_DELETE_SUBTREE,
+    // KEY_TOO_LONG
+    // INSERT_FAILED
+    // COULD_NOT_CREATE_ROOT
+    // DELETE_DATAENTRY_FAILED
+    // DATA_ENTRY_NOT_FOUND
+    // CANT_GET_PAGE_NO
+    // CANT_ALLOCATE_NEW_PAGE
+    // CANT_SPLIT_LEAF_PAGE
+    // CANT_SPLIT_INDEX_PAGE
 };
 
-static error_string_table btree_table( BTREE, BtreeErrorMsgs);
+static error_string_table btree_table(BTREE, BtreeErrorMsgs);
 
-/*
-	an index with given filename should already exist,
-	this opens it.
-*/
-	 BTreeFile::BTreeFile (Status& returnStatus, const char *filename)
-{
-	Status status;
-	
-	status = MINIBASE_DB->get_file_entry(filename, headerPageId);
-	
-	if ( status != OK ) {
-		returnStatus = MINIBASE_CHAIN_ERROR(BTREE, status);
-		return;
-	}
-	
-	status = MINIBASE_BM->pinPage(headerPageId, headerPage);
-	
-	if ( status != OK ) {
-		returnStatus = MINIBASE_CHAIN_ERROR(BTREE, status);
-		return;
-	}
-	
-	strcpy(fileName, filename);
-	returnStatus = OK;
+BTreeFile::BTreeFile(Status& returnStatus, const char *filename) {
+    Status status; // Validation Variable
+
+    status = MINIBASE_DB->get_file_entry(filename, headerPageId);
+
+    if (status != OK) {
+        returnStatus = MINIBASE_CHAIN_ERROR(BTREE, status);
+        return;
+    }
+
+    status = MINIBASE_BM->pinPage(headerPageId, (Page*&) headerPageInfo);
+
+    if (status != OK) {
+        returnStatus = MINIBASE_CHAIN_ERROR(BTREE, status);
+        return;
+    }
+
+    fileName = new char[strlen(filename) + 1];
+    strcpy(fileName, filename);
+    parentPages = new IndexPage[headerPageInfo->height];
+    returnStatus = OK;
+
 }
 
-BTreeFile::BTreeFile (Status& returnStatus, const char *filename, 
-                      const AttrType keytype,
-                      const int keysize)
-{
-	Status status;
-	
-	if ( keytype != attrString && keytype != attrInteger ) {
-		returnStatus = MINIBASE_FIRST_ERROR(BTREE, ATTRNOTFOUND);
-		return;
-	}
+BTreeFile::BTreeFile(Status& returnStatus, const char *filename,
+        const AttrType keytype,
+        const int keysize) {
 
-	status = MINIBASE_DB->get_file_entry(filename, headerPageId);
+    Status status;
 
-	if ( status != OK ) {
-		status = MINIBASE_BM->newPage(headerPageId, headerPage);
-		
-		if ( status != OK ) {
-			returnStatus = MINIBASE_CHAIN_ERROR(BTREE, status);
-			return;
-		}
-		
-		status = MINIBASE_DB->add_file_entry(filename, headerPageId);
-		
-		if ( status != OK ) {
-			returnStatus = MINIBASE_CHAIN_ERROR(BTREE, status);
-			return;
-		}
-		
-		((HFPage *)headerPage)->init(headerPageId);
-		
-		BTLeafPage root;
-		
-		status = MINIBASE_BM->newPage(headerPageInfo->pageId, (Page *&)root);
-		
-		if ( status != OK ) {
-			returnStatus = MINIBASE_CHAIN_ERROR(BTREE, status);
-			return;
-		}
-	
-		root->init(headerPageInfo->pageId);
-		//((HFPage *)root)->setPrevPage(headerPageId);
-		//((HFPage *)headerPage)->setNextPage(headerPageInfo->pageId);
-		
-		status = MINIBASE_BM->unpinPage(headerPageInfo->pageId, true);
-		
-		if ( status != OK ) {
-			returnStatus = MINIBASE_CHAIN_ERROR(BTREE, status);
-			return;
-		}
-		
-	} else {
-		status = MINIBASE_BM->pinPage(headerPageId, headerPage);
-		
-		if ( status != OK ) {
-			returnStatus = MINIBASE_CHAIN_ERROR(BTREE, status);
-			return;
-		}
-	}
-	
-	headerPageInfo->type = keytype;
-	headerPageInfo->keysize = keysize;
-	strcpy(fileName, filename);
-	returnStatus = OK;
+    if (keytype != attrString && keytype != attrInteger) {
+        returnStatus = MINIBASE_FIRST_ERROR(BTREE, ATTRNOTFOUND);
+        return;
+    }
+
+    status = MINIBASE_DB->get_file_entry(filename, headerPageId);
+
+    if (status != OK) {
+
+        status = MINIBASE_BM->newPage(headerPageId, (Page*&) headerPageInfo);
+
+        if (status != OK) {
+            returnStatus = MINIBASE_CHAIN_ERROR(BTREE, status);
+            return;
+        }
+
+        ((HFPage*) headerPageInfo)->init(headerPageId);
+
+        status = MINIBASE_DB->add_file_entry(filename, headerPageId);
+
+        if (status != OK) {
+            returnStatus = MINIBASE_CHAIN_ERROR(BTREE, status);
+            return;
+        }
+
+        BTLeafPage *rootPage;
+        PageId rootPageId;
+
+        status = MINIBASE_BM->newPage(rootPageId, (Page*&) rootPage);
+
+        if (status != OK) {
+            returnStatus = MINIBASE_CHAIN_ERROR(BTREE, status);
+            return;
+        }
+
+        rootPage->init(rootPageId);
+
+        headerPageInfo->rootPageId = rootPageId;
+        headerPageInfo->keyType = keytype;
+        headerPageInfo->keySize = keysize;
+        headerPageInfo->height = 1;
+
+        status = MINIBASE_BM->unpinPage(rootPageId, true);
+
+        if (status != OK) {
+            returnStatus = MINIBASE_CHAIN_ERROR(BTREE, status);
+            return;
+        }
+
+    } else {
+
+        status = MINIBASE_BM->pinPage(headerPageId, (Page*&) headerPageInfo);
+
+        if (status != OK) {
+            returnStatus = MINIBASE_CHAIN_ERROR(BTREE, status);
+            return;
+        }
+
+    }
+
+    fileName = new char[strlen(filename) + 1];
+    strcpy(fileName, filename);
+    parentPages = new IndexPage[headerPageInfo->height];
+    returnStatus = OK;
 }
 
-BTreeFile::~BTreeFile ()
-{
-	Status status;
-	
-	status = MINIBASE_BM->unpinPage(headerPageId, true);
-	
-	if ( status != OK ) {
-		MINIBASE_CHAIN_ERROR(BTREE, status);
-		return;
-	}
-	
-	delete [] fileName;
+BTreeFile::~BTreeFile() {
+    Status status;
+
+    status = MINIBASE_BM->unpinPage(headerPageId, true);
+
+    if (status != OK) {
+        MINIBASE_CHAIN_ERROR(BTREE, status);
+        return;
+    }
+
+    delete [] fileName;
+    delete [] parentPages;
 }
 
-Status BTreeFile::destroyFile ()
-{
-	// put your code here
-	BTLeafPage *page;
-	void *key;
-	Page * root;
-	Status status;
-	PageId pageId;
+Status BTreeFile::destroyFile() {
+    Status status;
 
-	status = MINIBASE_BM->pinPage(headerPageInfo->pageId, (Page *&)root);
+    PageId pageNo = headerPageInfo->rootPageId;
+    Page* page;
 
-	if ( status != OK ) {
-		return MINIBASE_CHAIN_ERROR(BTREE, status);
-	}
-	
-	status = getBTLeafPage(root, &page, &pageId, NULL);
+    //    status = MINIBASE_BM->pinPage(pageNo, page);
+    status = getStartingBTLeafPage(pageNo, NULL);
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-	if ( status != OK ) {
-		return status;
-	}
-	
-	while ( pageId != INVALID_PAGE ) {
-		status = MINIBASE_BM->pinPage(pageId, page);
-		
-		if ( status != OK ) {
-			return MINIBASE_CHAIN_ERROR(BTREE, status);
-		}
-		
-		RID rid, dataRid;
-		
-		status = page->get_first(rid, key, dataRid);
-		
-		if ( status != OK ) {
-			return MINIBASE_CHAIN_ERROR(BTREE, status);
-		}
-		
-		while ( true ) {
-			delete(key, dataRid);
-			
-			status = page->get_next(rid, key, dataRid);
-			
-			if ( status != OK ) {
-				break;
-			}
-			
-			// handles getting the next 
-		}
-	}
-	
-	// delete index page and header page 
-	
-	return OK;
+    int count = headerPageInfo->height - 1;
+
+    RID rid;
+    KeyType key;
+    RID dataRid;
+    PageId id;
+
+    while (count >= 0) {
+        PageId firstPageID = pageNo;
+
+        if (pageNo == INVALID_PAGE) {
+            break;
+        }
+
+        status = MINIBASE_BM->pinPage(pageNo, page);
+        if (status != OK)
+            return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+        if (((SortedPage*) page)->get_type() == LEAF) {
+            while (pageNo != INVALID_PAGE) {
+
+                if (pageNo != firstPageID) {
+                    status = MINIBASE_BM->pinPage(pageNo, page);
+                    if (status != OK)
+                        return MINIBASE_CHAIN_ERROR(BTREE, status);
+                }
+
+                status = ((BTLeafPage*) page)->get_first(rid, &key, dataRid);
+
+                if (status == OK) {
+                    do {
+                        RID tmpRid = rid;
+                        ((BTLeafPage*) page)->deleteRecord(tmpRid);
+                    } while (((BTLeafPage*) page)->get_next(rid, &key, dataRid) == OK);
+                }
+
+                PageId oldPageId = pageNo;
+
+                pageNo = ((HFPage*) page)->getNextPage();
+
+                status = MINIBASE_BM->unpinPage(oldPageId);
+
+                if (status != OK)
+                    return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+                status = MINIBASE_BM->freePage(oldPageId);
+
+                if (status != OK)
+                    return MINIBASE_CHAIN_ERROR(BTREE, status);
+            }
+
+            pageNo = parentPages[count].indexPageId;
+        } else {
+
+            while (pageNo != INVALID_PAGE) {
+
+                if (pageNo != firstPageID) {
+                    status = MINIBASE_BM->pinPage(pageNo, page);
+
+                    if (status != OK)
+                        return MINIBASE_CHAIN_ERROR(BTREE, status);
+                }
+
+                status = ((BTIndexPage*) page)->get_first(rid, &key, id);
+
+                if (status == OK) {
+                    do {
+                        KeyType tmpKey = key;
+                        RID tmpRid = rid;
+                        ((BTIndexPage*) page)->deleteKey(&tmpKey, headerPageInfo->keyType, tmpRid);
+                    } while (((BTIndexPage*) page)->get_next(rid, &key, id) == OK);
+                }
+
+                PageId oldPageId = pageNo;
+
+                pageNo = ((HFPage*) page)->getNextPage();
+
+                status = MINIBASE_BM->unpinPage(oldPageId);
+
+                if (status != OK)
+                    return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+                status = MINIBASE_BM->freePage(oldPageId);
+
+                if (status != OK)
+                    return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+            }
+            count--;
+            pageNo = parentPages[count].indexPageId;
+        }
+    }
+
+    status = MINIBASE_BM->unpinPage(headerPageId);
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+    status = MINIBASE_BM->freePage(headerPageId);
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+    delete [] fileName;
+    delete [] parentPages;
+
+    return OK;
 }
 
 Status BTreeFile::insert(const void *key, const RID rid) {
-  // put your code here
-	BTLeafPage *page;
-	void *key;
-	Page * root;
-	Status status;
-	PageId pageId;
+    Status status;
+    int keyLength;
+    int dataKeySize;
+    int leafPageSize;
+    int keySize = keysize();
+    PageId leafPageId;
+    RID dataRid;
+    BTLeafPage* leafPage;
 
-	status = MINIBASE_BM-pinPage(headerPageInfo->pageId, (Page *&)root);
+    keyLength = get_key_length(key, headerPageInfo->keyType);
 
-	if ( status != OK ) {
-		return MINIBASE_CHAIN_ERROR(BTREE, status);
-	}
-	
-	status = getBTLeafPage(root, &page, &pageId, key);
-	
-	// return DONE if no more space and OK 
+    if (keyLength > keySize)
+        return MINIBASE_FIRST_ERROR(BTREE, TUPLE_TOO_BIG);
+
+    status = getStartingBTLeafPage(leafPageId, key);
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+    status = MINIBASE_BM->pinPage(leafPageId, (Page*&) leafPage);
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+    dataKeySize = get_key_data_length(key, headerPageInfo->keyType, LEAF);
+    leafPageSize = ((HFPage*) leafPage)->available_space();
+
+    if (dataKeySize > leafPageSize) {
+        status = splitLeafPage(leafPage, leafPageId, (headerPageInfo->height - 1), key, rid);
+    } else {
+        status = leafPage->insertRec(key, headerPageInfo->keyType, rid, dataRid);
+        if (status != OK)
+            return MINIBASE_CHAIN_ERROR(BTREE, status);
+    }
+
+    //    for (int i = 0; i < headerPageInfo->height; i++) {
+    //        cout << "Page Id is " << parentPages[i].indexPageId << endl;
+    //    }
+
+    delete [] parentPages;
+    parentPages = new IndexPage[headerPageInfo->height];
+
+    return OK;
 }
 
 Status BTreeFile::Delete(const void *key, const RID rid) {
-  // put your code here
-  
-  return OK;
+    Status status;
+    PageId pageId;
+    BTLeafPage* page;
+
+    status = getStartingBTLeafPage(pageId, key);
+
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+    status = MINIBASE_BM->pinPage(pageId, (Page*&) page);
+
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+    bool deleteRecord = false;
+
+    RID rid2;
+    RID dataRid;
+    KeyType dataKey;
+
+    status = page->get_first(rid2, &dataKey, dataRid);
+
+    if (status == OK) {
+        do {
+            if (keyCompare(key, &dataKey, headerPageInfo->keyType) == 0) {
+                deleteRecord = true;
+                status = ((SortedPage*) page)->deleteRecord(rid);
+                if (status != OK)
+                    return MINIBASE_CHAIN_ERROR(BTREE, status);
+                break;
+            }
+        } while (page->get_next(rid2, &dataKey, dataRid) == OK);
+    } else {
+        return MINIBASE_FIRST_ERROR(BTREE, RECNOTFOUND);
+    }
+
+    status = MINIBASE_BM->unpinPage(pageId);
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+    if (deleteRecord == false)
+        return MINIBASE_FIRST_ERROR(BTREE, RECNOTFOUND);
+
+
+
+    return OK;
 }
-    
+
 IndexFileScan *BTreeFile::new_scan(const void *lo_key, const void *hi_key) {
-	IndexFileScan * scan;
-	Status status;
-	HFPage *root;
-	BTLeafPage *page;
-	PageId pageId;
-	RID *rid;
-	RID *dataRid;
-	
-	status = MINIBASE_BM->pinPage(headerPageInfo->pageId, (Page *&)root);
-	
-	if ( status != OK ) {
-		MINIBASE_CHAIN_ERROR(BTREE, status);
-		return NULL;
-	}
-	
-	status = getBTLeafPage(root, &page, &pageId, lo_key);
-	
-	if ( hi_key == NULL ) {
-		while (pageId != INVALID_PAGE) {
-			while (scan->get_next(rid, key) == OK);
-			
-			PageId id = ((HFPage *)page)->getNextPage();
-			
-			status = MINIBASE_BM->unpinPage(pageId, true);
-			
-			if ( status != OK ) {
-				MINIBASE_CHAIN_ERROR(BTREE, status);
-				return NULL;
-			}
-			
-			status = MINIBASE_BM->pinPage(id, (Page &*)page);
-			
-			if ( status != OK ) {
-				MINIBASE_CHAIN_ERROR(BTREE, status);
-				return NULL;
-			}
-			
-			pageId = id;
-		}
-	} else if ( lo_key == hi_key ) {
-		bool found = false;
-		
-		while ( scan->get_next(rid, key) == OK ) {
-			if ( key == hi_key && key == lo_key ) { 
-				found = true;
-				break;
-			}
-		}
-		
-		if ( found == false ) {
-			MINIBASE_CHAIN_ERROR(BTREE, RECNOTFOUND);
-		}
-		
-	} else {
-		
-		bool isHiKey = false;
-		
-		while ( pageId != INVALID_PAGE ) {
-			while (scan->get_next(rid, key) == OK) {
-				if ( keycompare(key, hi_key) >= 0 ) {
-					isHiKey = true;
-				}
-			}
-			
-			if ( isHiKey == true ) {
-				break;
-			}
-		}
-	}
-	
-	status = MINIBASE_BM->unpinPage(pageId, true);
-	
-	if ( status != OK ) {
-		MINIBASE_CHAIN_ERROR(BTREE, status);
-		return NULL;
-	}
-	
-	status = MINIBASE_BM->unpinPage(headerPageInfo->pageId, true);
-	
-	if ( status != OK ) {
-		MINIBASE_CHAIN_ERROR(BTREE, status);
-		return NULL;
-	}
-	
-	return scan;
+    // put your code here
+
+    Status status;
+    PageId pageId;
+    BTLeafPage *page;
+
+    status = getStartingBTLeafPage(pageId, lo_key);
+
+    if (status != OK) {
+        MINIBASE_CHAIN_ERROR(BTREE, status);
+        return NULL;
+    }
+
+    status = MINIBASE_BM->pinPage(pageId, (Page*&) page);
+
+    BTreeFileScan *scan; //= new BTreeFileScan(this, page);
+
+
+    PageId startPageId = pageId;
+    RID rid;
+    RID dataRid;
+    KeyType key;
+
+    if (lo_key == NULL && hi_key == NULL) {
+
+        while (pageId != INVALID_PAGE) {
+            if (pageId != startPageId) {
+                status = MINIBASE_BM->pinPage(pageId, (Page*&) page);
+                if (status != OK) {
+                    MINIBASE_CHAIN_ERROR(BTREE, status);
+                    return NULL;
+                }
+            }
+            status = page->get_first(rid, &key, dataRid);
+
+            if (status == OK) {
+                while (scan->get_next(rid, &key) == OK);
+            }
+
+            PageId oldPageId = pageId;
+
+            pageId = ((HFPage*) page)->getNextPage();
+
+            status = MINIBASE_BM->unpinPage(oldPageId);
+
+            if (status != OK) {
+                MINIBASE_CHAIN_ERROR(BTREE, status);
+                return NULL;
+            }
+        }
+
+    } else if (lo_key == NULL && hi_key != NULL) {
+
+        /* Find the First Record */
+        bool foundHiKey = false;
+
+        while (pageId != INVALID_PAGE && foundHiKey == false) {
+            if (pageId != startPageId) {
+                status = MINIBASE_BM->pinPage(pageId, (Page*&) page);
+
+                if (status != OK) {
+                    MINIBASE_CHAIN_ERROR(BTREE, status);
+                    return NULL;
+                }
+            }
+
+            status = page->get_first(rid, &key, dataRid);
+
+            if (status == OK) {
+                do {
+                    if (keyCompare(&key, hi_key, headerPageInfo->keyType) == 0) {
+                        foundHiKey = true;
+                        break;
+                    }
+                } while (scan->get_next(rid, &key) == OK);
+            }
+
+            if (foundHiKey == false) {
+                PageId oldPageId = pageId;
+
+                pageId = page->getNextPage();
+
+                status = MINIBASE_BM->unpinPage(oldPageId);
+
+                if (status != OK) {
+                    MINIBASE_CHAIN_ERROR(BTREE, status);
+                    return NULL;
+                }
+            }
+        }
+
+    } else if (lo_key != NULL && hi_key == NULL) {
+        status = page->get_first(rid, &key, dataRid);
+
+        if (status != OK) {
+            MINIBASE_CHAIN_ERROR(BTREE, RECNOTFOUND);
+            return NULL;
+        }
+
+        while (keyCompare(&key, lo_key, headerPageInfo->keyType) < 0) {
+            status = page->get_next(rid, &key, dataRid);
+
+            if (status != OK && status != DONE) {
+                MINIBASE_CHAIN_ERROR(BTREE, status);
+                return NULL;
+            }
+        }
+
+        while (scan->get_next(rid, &key) == OK);
+
+        PageId oldPageId = pageId;
+
+        pageId = page->getNextPage();
+
+        status = MINIBASE_BM->unpinPage(oldPageId);
+
+        if (status != OK) {
+            MINIBASE_CHAIN_ERROR(BTREE, status);
+            return NULL;
+        }
+
+        while (pageId != INVALID_PAGE) {
+            status = MINIBASE_BM->pinPage(pageId, (Page*&) page);
+
+            if (status != OK) {
+                MINIBASE_CHAIN_ERROR(BTREE, status);
+                return NULL;
+            }
+
+            status = page->get_first(rid, &key, dataRid);
+
+            if (status == OK) {
+                while (scan->get_next(rid, &key) == OK);
+            }
+
+            oldPageId = pageId;
+
+            pageId = page->getNextPage();
+
+            status = MINIBASE_BM->unpinPage(oldPageId);
+
+            if (status != OK) {
+                MINIBASE_CHAIN_ERROR(BTREE, status);
+                return NULL;
+            }
+        }
+    } else if (lo_key == hi_key) {
+        bool isEquality = false;
+
+        status = page->get_first(rid, &key, dataRid);
+
+        if (status == OK) {
+            do {
+                if (keyCompare(&key, lo_key, headerPageInfo->keyType) == 0) {
+                    isEquality = true;
+                    break;
+                }
+            } while (scan->get_next(rid, &key) == OK);
+        }
+
+        if (isEquality == false) {
+            MINIBASE_CHAIN_ERROR(BTREE, RECNOTFOUND);
+            return scan;
+        }
+    }
+
+
+    return scan;
 }
 
-int keysize(){
-	return headerPageInfo->keysize;
+int BTreeFile::keysize() {
+    return headerPageInfo->keySize;
 }
 
-Status BTreeFile::getBTLeafPage(HFPage *root, BTLeafPage &*page, PageId &id, void * lo_key) {
-	Status status;
-	HFPage *currPage = root;
-	PageId pageId;
-	RID *rid;
-	void *key;
-	
-	if ( currPage->get_type() == INDEX ) {
-		
-		if ( lo_key == NULL ) {
-			((BTIndexPage *)currPage)->get_first(rid, key, pageId);
-			
-			status = MINIBASE_BM->pinPage(pageId, (Page &*)currPage);
-			
-			if ( status != OK ) {
-				return MINIBASE_CHAIN_ERROR(BTREE, status);
-			}
-			
-			while ( currPage->get_type() != LEAF ) {
-				PageId *tmpId;
-				
-				((BTIndexPage *)currPage)->get_first(rid, key, tmpId);
-				
-				status = MINIBASE_BM->unpinPage(pageId, true);
-				
-				if ( status != OK ) {
-					return MINIBASE_CHAIN_ERROR(BTREE, status);
-				}
-				
-				pageId = tmpId;
-				
-				status = MINIBASE_BM->pinPage(pageId, (Page &*)currPage);
-				
-				if ( status != OK ) {
-					return MINIBASE_CHAIN_ERROR(BTREE, status);
-				}
-				
-			}
-			
-			page = currPage;
-			id = pageId;
+Status BTreeFile::splitLeafPage(BTLeafPage* leafPage, PageId leafPageId,
+        int height, const void* key, const RID rid) {
+    //    cout << "Attempting to Split Now" << endl;
+    Status status;
+    BTLeafPage* newLeafPage;
+    PageId newLeafPageId;
 
-		} else {
-			
-			((BTIndexPage *)currPage)->get_first(rid, key, pageId);
-			
-			status = MINIBASE_BM->pinPage(pageId, (Page &*)currPage);
-			
-			if ( status != OK ) {
-				return MINIBASE_CHAIN_ERROR(BTREE, status);
-			}
-				
-			while ( currPage->get_type() != LEAF ) {
-				bool found = false;
-				
-				while ( found == false ) {
-					if ( keycompare(lo_key, key) >= 0 ) {
-						found = true;
-					} else {
-						
-						PageId *nextPageId;
-						
-						((BTIndexPage *)currPage)->get_next(rid, key, nextPageId);
-						
-						status = MINIBASE_BM->pinPage(nextPageId, (Page &*)currPage);
-						
-						if ( status != OK ) {
-							return MINIBASE_CHAIN_ERROR(BTREE, status);
-						}
-						
-						if ( nextPageId == INVALID_PAGE ) {
-							found = true;
-							
-							status = MINIBASE_BM->unpinPage(pageId, true);
+    status = MINIBASE_BM->newPage(newLeafPageId, (Page*&) newLeafPage);
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-							if ( status != OK ) {
-								return MINIBASE_CHAIN_ERROR(BTREE, status);
-							}
-							
-							continue;
-						}
-						
-						status = MINIBASE_BM->unpinPage(pageId, true);
-						
-						if ( status != OK ) {
-							return MINIBASE_CHAIN_ERROR(BTREE, status);
-						}
-						
-						pageId = nextPageId;
+    newLeafPage->init(newLeafPageId);
 
-					}
-				}
-				
-				PageId tmpId;
-				
-				((BTIndexPage *)currPage)->get_first(rid, key, tmpId);
-				
-				status = MINIBASE_BM->unpinPage(pageId, true);
-				
-				if ( status != OK ) {
-					return MINIBASE_CHAIN_ERROR(BTREE, status);
-				}
-				
-				pageId = tmpId;
-				
-				status = MINIBASE_BM->pinPage(pageId, (Page &*)currPage);
-				
-				if ( status != OK ) {
-					return MINIBASE_CHAIN_ERROR(BTREE, status);
-				}
-				
-			}
-			
-			page = ((BTLeafPage *)currPage);
-			id = pageId;
-			
-		}
+    //    cout << "Finished Creating a New Page" << endl;
+    int totalRec = ((SortedPage*) leafPage)->numberOfRecords();
+    int halfRec;
+    if (totalRec % 2 == 0)
+        halfRec = totalRec / 2;
+    else
+        halfRec = (totalRec / 2) + 1;
 
-	} else if ( currPage->get_type() == LEAF ) {
-		page = ((BTLeafPage *)currPage);
-		id = pageId; 
-	}
-	
-	return OK;
+    int count = 0;
+
+    RID rid2;
+    RID dataRid2;
+    KeyType dataKey;
+
+    status = leafPage->get_first(rid2, &dataKey, dataRid2);
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(BTREE, status);
+    //    cout << "Got the First Record..." << endl;
+    KeyType firstKey = dataKey;
+    RID firstRid = rid2;
+
+    count++;
+
+    for (; count < halfRec; count++)
+        leafPage->get_next(rid2, &dataKey, dataRid2);
+
+    //    cout << "Got the Half Record..." << endl;
+    RID tmpRid;
+
+    status = newLeafPage->insertRec(&dataKey, headerPageInfo->keyType, dataRid2, tmpRid);
+    if (status != OK)
+        //        cout << "Failed to insert the first key" << endl;
+        return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+    //        cout << "Finished inserting the first key..." << endl;
+    KeyType newLeafFirstKey = dataKey;
+    RID newLeafFirstRid = rid2;
+
+    for (; count < totalRec; count++) {
+        leafPage->get_next(rid2, &dataKey, dataRid2);
+        newLeafPage->insertRec(&dataKey, headerPageInfo->keyType, dataRid2, tmpRid);
+        ((SortedPage*) leafPage)->deleteRecord(rid2);
+    }
+    //cout << "Finished Copying Records" << endl;
+    PageId leafPageNextPageId = ((HFPage*) leafPage)->getNextPage();
+    ((HFPage*) newLeafPage)->setNextPage(leafPageNextPageId);
+    ((HFPage*) newLeafPage)->setPrevPage(leafPageId);
+    ((HFPage*) leafPage)->setNextPage(newLeafPageId);
+    //cout << "Finsihed Setting New Next and Prev Page" << endl;
+
+    cout << "old Page total record " << ((SortedPage*) leafPage)->numberOfRecords() << endl;
+    cout << "new Page total record " << ((SortedPage*) newLeafPage)->numberOfRecords() << endl;
+
+
+    if (keyCompare(key, &firstKey, headerPageInfo->keyType) < 0) {
+        status = leafPage->insertRec(key, headerPageInfo->keyType, rid, tmpRid);
+    } else {
+        status = newLeafPage->insertRec(key, headerPageInfo->keyType, rid, tmpRid);
+    }
+
+    //    cout << "Height == " << height << " and Page Id == " << parentPages[height].indexPageId << endl;
+
+    cout << "old Page total record " << ((SortedPage*) leafPage)->numberOfRecords() << endl;
+    cout << "new Page total record " << ((SortedPage*) newLeafPage)->numberOfRecords() << endl;
+
+    if (parentPages[height].indexPageId == INVALID_PAGE) {
+        BTIndexPage *newRootPage;
+        PageId newRootPageId;
+
+        status = MINIBASE_BM->newPage(newRootPageId, (Page*&) newRootPage);
+        if (status != OK)
+            return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+        newRootPage->init(newRootPageId);
+
+        //        newRootPage->insertKey(firstKey, )
+        //        RID dummy;
+        status = newRootPage->insertKey(&firstKey, headerPageInfo->keyType, ((SortedPage*) leafPage)->page_no(), firstRid);
+        if (status != OK)
+            return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+        //        cout << "INserted First Key..." << ((SortedPage*) leafPage)->page_no() << endl;
+
+        //        RID dummy2;
+        status = newRootPage->insertKey(&newLeafFirstKey, headerPageInfo->keyType, ((SortedPage*) newLeafPage)->page_no(), newLeafFirstRid);
+        if (status != OK)
+            return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+        //        cout << "Inserted Second Key..." << ((SortedPage*) newLeafPage)->page_no() << endl;
+
+        RID newRid;
+        PageId newPageId;
+        KeyType newKey;
+
+
+        status = newRootPage->get_first(newRid, &newKey, newPageId);
+
+        if (status != OK)
+            return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+        //        cout << "Page Number is " << newPageId << endl;
+
+        status = newRootPage->get_next(newRid, &newKey, newPageId);
+
+        if (status != OK)
+            return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+        //        cout << "Page Number2 is " << newPageId << endl;
+
+        //        cout << "Total Number is ... " << ((SortedPage*) newRootPage)->numberOfRecords() << endl;
+
+        status = MINIBASE_BM->unpinPage(newRootPageId, true);
+        if (status != OK)
+            return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+        status = MINIBASE_BM->unpinPage(newLeafPageId, true);
+        if (status != OK)
+            return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+        headerPageInfo->rootPageId = newRootPageId;
+        headerPageInfo->height = headerPageInfo->height + 1;
+    } else {
+        cout << "Insert Here...." << endl;
+        BTIndexPage *parentPage;
+        PageId parentPageId = parentPages[height].indexPageId;
+        status = MINIBASE_BM->pinPage(parentPageId, (Page*&) parentPage);
+        if (status != OK)
+            return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+        RID recRid;
+        RID recDataRid;
+        KeyType recKey;
+
+        status = newLeafPage->get_first(recRid, &recKey, recDataRid);
+
+        if (status != OK)
+            return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+        int availableSpace = ((HFPage*) parentPage)->available_space();
+        int space = get_key_data_length(key, headerPageInfo->keyType, INDEX);
+
+        if (space > availableSpace) {
+            // split Index Page
+            status = splitIndexPage(parentPage, parentPageId, (height - 1), &recKey);
+        } else {
+            status = parentPage->insertKey(&newLeafFirstKey, headerPageInfo->keyType, ((SortedPage*) newLeafPage)->page_no(), newLeafFirstRid);
+            if (status != OK)
+                return MINIBASE_CHAIN_ERROR(BTREE, status);
+        }
+
+        status = MINIBASE_BM->unpinPage(parentPageId);
+    }
+
+    return OK;
+}
+
+Status BTreeFile::splitIndexPage(BTIndexPage* page, PageId pageId, int height, void* recKey) {
+    cout << "Split Index Page" << endl;
+
+    Status status;
+
+    if (height == -1)
+        return OK;
+
+    BTIndexPage* newIndexPage;
+    PageId newIndexPageId;
+
+    status = MINIBASE_BM->newPage(newIndexPageId, (Page*&) newIndexPage);
+
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+    newIndexPage->init(newIndexPageId);
+
+    RID tmpRid;
+    PageId tmpPageId;
+    KeyType tmpKey;
+
+    int totalRec = ((SortedPage*) page)->numberOfRecords();
+    int halfRec;
+
+    if (totalRec % 2 == 0)
+        halfRec = totalRec / 2;
+    else
+        halfRec = (totalRec / 2) + 1;
+
+    int count = 0;
+
+    status = ((BTIndexPage*) page)->get_first(tmpRid, &tmpKey, tmpPageId);
+
+    KeyType firstKey = tmpKey;
+    RID firstRid = tmpRid;
+
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+    count++;
+
+    for (; count < halfRec; count++)
+        ((BTIndexPage*) page)->get_next(tmpRid, &tmpKey, tmpPageId);
+
+    RID tmpRid2;
+
+    status = newIndexPage->insertKey(&tmpKey, headerPageInfo->keyType, tmpPageId, tmpRid2);
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+    KeyType newIndexFirstKey = tmpKey;
+    RID newIndexFirstRid = tmpRid;
+
+    for (; count < totalRec; count++) {
+        ((BTIndexPage*) page)->get_next(tmpRid, &tmpKey, tmpPageId);
+        newIndexPage->insertKey(&tmpKey, headerPageInfo->keyType, tmpPageId, tmpRid2);
+        ((BTIndexPage*) page)->deleteKey(&tmpKey, headerPageInfo->keyType, tmpRid);
+    }
+
+    if (height == -1) {
+        /* Create New Root Page */
+        BTIndexPage *newRootPage;
+        PageId newRootPageId;
+
+        status = MINIBASE_BM->newPage(newRootPageId, (Page*&) newRootPage);
+        if (status != OK)
+            return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+        newRootPage->init(newRootPageId);
+
+        //        newRootPage->insertKey(firstKey, )
+        //        RID dummy;
+        status = newRootPage->insertKey(&firstKey, headerPageInfo->keyType, ((SortedPage*) page)->page_no(), firstRid);
+        if (status != OK)
+            return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+        //        cout << "INserted First Key..." << ((SortedPage*) leafPage)->page_no() << endl;
+
+        //        RID dummy2;
+        status = newRootPage->insertKey(&newIndexFirstKey, headerPageInfo->keyType, ((SortedPage*) newIndexPage)->page_no(), newIndexFirstRid);
+        if (status != OK)
+            return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+        //        cout << "Inserted Second Key..." << ((SortedPage*) newLeafPage)->page_no() << endl;
+        status = MINIBASE_BM->unpinPage(newRootPageId, true);
+        if (status != OK)
+            return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+        status = MINIBASE_BM->unpinPage(newIndexPageId, true);
+        if (status != OK)
+            return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+    } else {
+        cout << "Insert Here...." << endl;
+        BTIndexPage *parentPage;
+        PageId parentPageId = parentPages[height].indexPageId;
+        status = MINIBASE_BM->pinPage(parentPageId, (Page*&) parentPage);
+        if (status != OK)
+            return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+        RID recRid;
+        PageId recPageId;
+        KeyType recKey;
+
+        status = newIndexPage->get_first(recRid, &recKey, recPageId);
+
+        if (status != OK)
+            return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+        int availableSpace = ((HFPage*) parentPage)->available_space();
+        int space = get_key_data_length(&recKey, headerPageInfo->keyType, INDEX);
+
+        if (space > availableSpace) {
+            // split Index Page
+            status = splitIndexPage(parentPage, parentPageId, (height - 1), &recKey);
+        } else {
+            status = parentPage->insertKey(&recKey, headerPageInfo->keyType, recPageId, newIndexFirstRid);
+            if (status != OK)
+                return MINIBASE_CHAIN_ERROR(BTREE, status);
+        }
+
+        status = MINIBASE_BM->unpinPage(parentPageId);
+    }
+
+    return OK;
+}
+
+Status BTreeFile::getStartingBTLeafPage(PageId& leafPageId,
+        const void* key) {
+    Status status;
+    PageId pageNo = headerPageInfo->rootPageId;
+    Page* page;
+    int index = 0;
+    RID tmpRid;
+    KeyType tmpKey;
+
+    parentPages[index].indexPageId = INVALID_PAGE;
+
+    status = MINIBASE_BM->pinPage(pageNo, page);
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+    while (((SortedPage*) page)->get_type() != LEAF) {
+        PageId tmpPageNo;
+        if (key == NULL) {
+            status = ((BTIndexPage*) page)->get_first(tmpRid, &tmpKey, tmpPageNo);
+
+            if (status != OK)
+                return MINIBASE_CHAIN_ERROR(BTREE, status);
+        } else {
+            status = ((BTIndexPage*) page)->get_page_no(key, headerPageInfo->keyType, tmpPageNo);
+
+            if (status != OK)
+                return MINIBASE_CHAIN_ERROR(BTREE, status);
+        }
+
+        parentPages[index].indexPageId = pageNo;
+        index++;
+
+        status = MINIBASE_BM->unpinPage(pageNo);
+        if (status != OK)
+            return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+        //        cout << "Page No2 is " << pageNo << endl;
+        pageNo = tmpPageNo;
+
+        //        cout << "Page No is " << pageNo << endl;
+        status = MINIBASE_BM->pinPage(pageNo, page);
+        if (status != OK)
+            return MINIBASE_CHAIN_ERROR(BTREE, status);
+    }
+
+    status = MINIBASE_BM->unpinPage(pageNo);
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+    leafPageId = pageNo;
+
+    return OK;
 }

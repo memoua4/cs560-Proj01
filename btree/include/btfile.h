@@ -17,13 +17,24 @@
 // Define your error code for B+ tree here
 // enum btErrCodes  {...}
 
+struct HeaderPageInfo {
+    PageId rootPageId;
+    int keySize;
+    AttrType keyType;
+    int height;
+};
+
+struct IndexPage {
+    PageId indexPageId;
+};
+
 class BTreeFile : public IndexFile {
 public:
-    BTreeFile(Status &status, const char *filename);
+    BTreeFile(Status& status, const char *filename);
     // an index with given filename should already exist,
     // this opens it.
 
-    BTreeFile(Status &status, const char *filename, const AttrType keytype, const int keysize);
+    BTreeFile(Status& status, const char *filename, const AttrType keytype, const int keysize);
     // if index exists, open it; else create it.
 
     ~BTreeFile();
@@ -58,6 +69,17 @@ public:
 
 private:
 
-};
+    PageId headerPageId;
+    struct IndexPage *parentPages;
+    struct HeaderPageInfo* headerPageInfo;
+    char * fileName;
+
+    Status getStartingBTLeafPage(PageId& leafPageId, const void* key = NULL);
+
+    Status splitLeafPage(BTLeafPage* leafPage, PageId leafPageId, int height, const void* key, const RID rid);
+
+    Status splitIndexPage(BTIndexPage *page, PageId pageId, int height, void* recKey);
+
+    };
 
 #endif
