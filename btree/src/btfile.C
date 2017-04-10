@@ -766,7 +766,7 @@ Status BTreeFile::splitIndexPage(BTIndexPage* page, PageId pageId, int height, v
         ((BTIndexPage*) page)->deleteKey(&tmpKey, headerPageInfo->keyType, tmpRid);
     }
 
-    if (height == -1) {
+    if (height == INVALID_PAGE) {
         /* Create New Root Page */
         BTIndexPage *newRootPage;
         PageId newRootPageId;
