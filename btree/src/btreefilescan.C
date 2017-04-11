@@ -5,11 +5,6 @@
  * Edited by Young-K. Suh (yksuh@cs.arizona.edu) 
  */
 
-#include "../include/minirel.h"
-#include "../include/buf.h"
-#include "../include/db.h"
-#include "../include/new_error.h"
-#include "../include/btfile.h"
 #include "../include/btreefilescan.h"
 
 /*

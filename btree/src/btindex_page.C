@@ -40,9 +40,9 @@ Status BTIndexPage::insertKey(const void *key,
 }
 
 Status BTIndexPage::deleteKey(const void *key, AttrType key_type, RID &curRid) {
-    NodeType nodeType = INDEX;
     Status status;
-    void *currentToCompare;
+    KeyDataEntry entry;
+    void *currentToCompare = &entry;
     PageId currentPage;
 
     // Begin iterating over each of the keys

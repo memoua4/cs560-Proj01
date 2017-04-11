@@ -48,15 +48,15 @@ Status SortedPage::insertRecord(AttrType keyType,
         return MINIBASE_FIRST_ERROR(SORTEDPAGE, ATTRNOTFOUND);
 
     // Now sort the data using a lambda function
-    std::sort(slot, slot + slotCnt, [](const slot_t first, const slot_t second) -> bool {
+    std::sort(slot, slot + slotCnt, [&](const slot_t first, const slot_t second) -> bool {
         if (first.length == EMPTY_SLOT)
             return false;
         if (second.length == EMPTY_SLOT)
             return true;
         short firstOffset = first.offset;
         short secondOffset = second.offset;
-        char *firstData = &data[firstOffset];
-        char *secondData = &data[secondOffset];
+        char *firstData = &this->data[firstOffset];
+        char *secondData = &this->data[secondOffset];
         return keyCompare(firstData, secondData, keyType) < 0;
         /*
         switch (keyType) {

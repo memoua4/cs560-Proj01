@@ -5,12 +5,12 @@
  * Edited by Young-K. Suh (yksuh@cs.arizona.edu) 03/27/14 CS560 Database Systems Implementation 
  */
 
-#include "minirel.h"
-#include "buf.h"
-#include "db.h"
-#include "new_error.h"
-#include "btfile.h"
-#include "btreefilescan.h"
+#include "../include/minirel.h"
+#include "../include/buf.h"
+#include "../include/db.h"
+#include "../include/new_error.h"
+#include "../include/btfile.h"
+#include "../include/btreefilescan.h"
 
 // Define your error message here
 const char* BtreeErrorMsgs[] = {

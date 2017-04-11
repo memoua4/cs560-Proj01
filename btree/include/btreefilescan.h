@@ -10,6 +10,9 @@
 #define _BTREEFILESCAN_H
 
 #include "btfile.h"
+#include "buf.h"
+
+class BTreeFile;
 
 // errors from this class should be defined in btfile.h
 
@@ -26,8 +29,8 @@ public:
     int keysize(); // size of the key
 
     // destructor
-    ~BTreeFileScan();
     BTreeFileScan(BTreeFile *file, BTLeafPage *leaf);
+    ~BTreeFileScan();
 
 private:
     BTreeFile *file;

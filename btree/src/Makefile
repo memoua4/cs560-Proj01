@@ -11,7 +11,7 @@ MINIBASE = ..
 
 CC=g++
 
-CFLAGS= -DUNIX -Wall -g
+CFLAGS= -DUNIX -Wall -g -std=c++11
 
 INCLUDES = -I${MINIBASE}/include
 

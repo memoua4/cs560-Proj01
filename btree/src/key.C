@@ -23,10 +23,14 @@
  *   - key1  > key2 : positive
  */
 int keyCompare(const void *key1, const void *key2, AttrType type) {
+    int *key1Int;
+    int *key2Int;
+    char *key1Str;
+    char *key2Str;
     switch (type) {
         case attrInteger:
-            int *key1Int = (int *) key1;
-            int *key2Int = (int *) key2;
+            key1Int = (int *) key1;
+            key2Int = (int *) key2;
             if (*key1Int < *key2Int)
                 return -1;
             else if (*key1Int == *key2Int)
@@ -34,8 +38,8 @@ int keyCompare(const void *key1, const void *key2, AttrType type) {
             else
                 return 1;
         case attrString:
-            char *key1Str = (char *) key1;
-            char *key2Str = (char *) key2;
+            key1Str = (char *) key1;
+            key2Str = (char *) key2;
             return strcmp(key1Str, key2Str);
         default:
             return 0;
@@ -54,14 +58,16 @@ void make_entry(KeyDataEntry *target,
                 NodeType nodeType, DataType data,
                 int *entryLength) {
     int keySize;
+    int *keyTargetInt;
+    char *keyTargetStr;
     switch (keyType) {
         case attrInteger:
-            int *keyTargetInt = &target->key.intkey;
+            keyTargetInt = &target->key.intkey;
             keySize = sizeof(int);
             memcpy(keyTargetInt, key, sizeof(int));
             break;
         case attrString:
-            char *keyTargetStr = target->key.charkey;
+            keyTargetStr = target->key.charkey;
             keySize = strlen(keyTargetStr) + 1;
             if (keySize > MAX_KEY_SIZE1)
                 return;
