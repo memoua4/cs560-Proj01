@@ -109,13 +109,13 @@ Status BTIndexPage::get_first(RID &rid,
 }
 
 Status BTIndexPage::get_next(RID &rid, void *key, PageId &pageNo) {
-    int currentSlot = rid.slotNo + 1;
+    rid.slotNo = rid.slotNo + 1;
 
-    if (currentSlot >= slotCnt)
-        return MINIBASE_FIRST_ERROR(BTINDEXPAGE, NOMORERECS);
+    //cout << "Slot CNT: " << slotCnt << endl;
+    //if (slotCnt == 1) this->dumpPage();
 
-    if (rid.pageNo != curPage)
-        return MINIBASE_FIRST_ERROR(BTINDEXPAGE, RECNOTFOUND);
+    if (rid.slotNo > slotCnt)
+        return NOMORERECS;
 
     DataType* dataType = (DataType *) &pageNo;
 

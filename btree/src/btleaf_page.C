@@ -125,7 +125,7 @@ Status BTLeafPage::get_next(RID &rid,
                             RID &dataRid) {
     rid.slotNo = rid.slotNo + 1;
 
-    if (rid.slotNo >= slotCnt)
+    if (rid.slotNo > slotCnt)
         return NOMORERECS;
 
     DataType* dataType = (DataType *) &dataRid;
