@@ -114,8 +114,8 @@ Status BTIndexPage::get_next(RID &rid, void *key, PageId &pageNo) {
     if (currentSlot >= slotCnt)
         return MINIBASE_FIRST_ERROR(BTINDEXPAGE, NOMORERECS);
 
-    if (rid.pageNo != pageNo)
-        return MINIBASE_FIRST_ERROR(BTINDEXPAGE, FAIL);
+    if (rid.pageNo != curPage)
+        return MINIBASE_FIRST_ERROR(BTINDEXPAGE, RECNOTFOUND);
 
     DataType* dataType = (DataType *) &pageNo;
 
