@@ -111,7 +111,7 @@ Status BTLeafPage::get_data_rid(void *key,
 Status BTLeafPage::get_first(RID &rid,
                              void *key,
                              RID &dataRid) {
-    if (slotCnt == 0)
+    if (slotCnt == 0 && slot[0].length == EMPTY_SLOT)
         return NOMORERECS;
 
     rid.pageNo = curPage;
@@ -120,9 +120,7 @@ Status BTLeafPage::get_first(RID &rid,
     return get_next(rid, key, dataRid);
 }
 
-Status BTLeafPage::get_next(RID &rid,
-                            void *key,
-                            RID &dataRid) {
+Status BTLeafPage::get_next(RID &rid, void *key, RID &dataRid) {
     rid.slotNo = rid.slotNo + 1;
 
     if (rid.slotNo > slotCnt)

@@ -99,7 +99,7 @@ Status BTIndexPage::get_page_no(const void *key,
 Status BTIndexPage::get_first(RID &rid,
                               void *key,
                               PageId &pageNo) {
-    if (slotCnt == 0)
+    if (slotCnt == 0 && slot[0].length == EMPTY_SLOT)
         return NOMORERECS;
 
     rid.pageNo = curPage;
@@ -110,9 +110,6 @@ Status BTIndexPage::get_first(RID &rid,
 
 Status BTIndexPage::get_next(RID &rid, void *key, PageId &pageNo) {
     rid.slotNo = rid.slotNo + 1;
-
-    //cout << "Slot CNT: " << slotCnt << endl;
-    //if (slotCnt == 1) this->dumpPage();
 
     if (rid.slotNo > slotCnt)
         return NOMORERECS;
