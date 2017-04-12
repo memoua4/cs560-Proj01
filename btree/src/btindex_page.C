@@ -151,13 +151,6 @@ Status BTIndexPage::get_first(RID &rid,
     pageNo = dataType.pageNo;
 
     return OK;
-    // if (this->numberOfRecords() == 0)
-    //     return NOMORERECS;
-
-    // rid.pageNo = curPage;
-    // rid.slotNo = -1; // Start at -1 so that when we increment in get_next we start at 0.
-
-    // return get_next(rid, key, pageNo);
 }
 
 Status BTIndexPage::get_next(RID &rid, void *key, PageId &pageNo) {
@@ -180,19 +173,6 @@ Status BTIndexPage::get_next(RID &rid, void *key, PageId &pageNo) {
     get_key_data(key, &dataType, &entry, length, INDEX);
 
     pageNo = dataType.pageNo;
-
-    return OK;
-
-    // rid.slotNo = rid.slotNo + 1;
-
-    // if (rid.slotNo > slotCnt)
-    //     return NOMORERECS;
-
-    // DataType* dataType = (DataType *) &pageNo;
-
-    // KeyDataEntry* entry = (KeyDataEntry *) (data + slot[rid.slotNo].offset);
-
-    // get_key_data(key, dataType, entry, slot[rid.slotNo].length, (NodeType) type);
 
     return OK;
 }
