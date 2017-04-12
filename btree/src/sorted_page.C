@@ -58,18 +58,6 @@ Status SortedPage::insertRecord(AttrType keyType,
         char *firstData = &this->data[firstOffset];
         char *secondData = &this->data[secondOffset];
         return keyCompare(firstData, secondData, keyType) < 0;
-        /*
-        switch (keyType) {
-            case attrInteger:
-                int firstInt = *((int *) firstData);
-                int secondInt = *((int *) secondData);
-                return firstInt > secondInt;
-            case attrString:
-                int comparison = strcmp(firstData, secondData);
-                return comparison >= 0;
-            default:
-                return false;
-        }*/
     });
 
     return OK;

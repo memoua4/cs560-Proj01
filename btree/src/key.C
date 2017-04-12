@@ -57,39 +57,19 @@ void make_entry(KeyDataEntry *target,
                 AttrType keyType, const void *key,
                 NodeType nodeType, DataType data,
                 int *entryLength) {
-    int keySize;
-    int *keyTargetInt;
-    char *keyTargetStr;
-    switch (keyType) {
-        case attrInteger:
-            keyTargetInt = &target->key.intkey;
-            keySize = sizeof(int);
-            memcpy(keyTargetInt, key, sizeof(int));
-            break;
-        case attrString:
-            keyTargetStr = target->key.charkey;
-            keySize = strlen(keyTargetStr) + 1;
-            if (keySize > MAX_KEY_SIZE1)
-                return;
-            strcpy(keyTargetStr, (char *) key);
-            break;
-        default:
-            return;
-    }
+    char *targetLoc = (char *) target;
 
-    int dataSize;
-    switch (nodeType) {
-        case INDEX:
-            dataSize = sizeof(PageId);
-            memcpy(target + keySize, &data, dataSize);
-            break;
-        case LEAF:
-            dataSize = sizeof(RID);
-            memcpy(target + keySize, &data, dataSize);
-            break;
-        default:
-            return;
+    int keySize = get_key_length(key, keyType);
+    if (keySize > MAX_KEY_SIZE1) {
+        cout << "TRIED TO INSERT KEY TOO LARGE!" << endl;
+        return;
     }
+    if (keySize != -1)
+        memcpy(targetLoc, key, keySize);
+
+    int dataSize = nodeType == INDEX ? sizeof (PageId) : nodeType == LEAF ? sizeof (RID) : 0;
+    if (dataSize != 0)
+        memcpy(targetLoc + keySize, &data, dataSize);
 
     *entryLength = keySize + dataSize;
 }
@@ -102,6 +82,8 @@ void make_entry(KeyDataEntry *target,
  */
 void get_key_data(void *targetKey, DataType *targetData,
                   KeyDataEntry *source, int entryLength, NodeType nodeType) {
+    char *sourceLoc = (char *) source;
+
     int dataLength;
     switch (nodeType) {
         case INDEX:
@@ -117,9 +99,9 @@ void get_key_data(void *targetKey, DataType *targetData,
     int keyLength = entryLength - dataLength;
 
     if (targetKey != NULL)
-        memcpy(targetKey, source, keyLength);
+        memcpy(targetKey, sourceLoc, keyLength);
     if (targetData != NULL)
-        memcpy(targetData, source + keyLength, dataLength);
+        memcpy(targetData, sourceLoc + keyLength, dataLength);
 }
 
 /*

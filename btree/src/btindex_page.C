@@ -31,7 +31,7 @@ Status BTIndexPage::insertKey(const void *key,
     int entryLength;
 
     make_entry(&entry, key_type, key, (NodeType) type, dataType, &entryLength);
-    //cout << "INSERT INDEX: " << entry.key.intkey << ", " << entry.data.pageNo << endl;
+
     Status status = SortedPage::insertRecord(key_type, (char *) &entry, entryLength, rid);
     if (status != OK)
         return MINIBASE_CHAIN_ERROR(BTINDEXPAGE, status);
@@ -73,11 +73,10 @@ Status BTIndexPage::deleteKey(const void *key, AttrType key_type, RID &curRid) {
 Status BTIndexPage::get_page_no(const void *key,
                                 AttrType key_type,
                                 PageId &pageNo) {
-    for (int i = slotCnt; i >= 0; i--)
-    {
-        if (slot[i].length != EMPTY_SLOT)
-        {
-            void *key2 = (data + slot[i].offset);
+    for (int i = slotCnt; i >= 0; i--) {
+        if (slot[i].length != EMPTY_SLOT) {
+            char *key2 = &data[slot[i].offset];
+
             int compare = keyCompare(key, key2, key_type);
             if (compare >= 0) // key1 >= key2
             {
