@@ -31,7 +31,7 @@ Status BTIndexPage::insertKey(const void *key,
     int entryLength;
 
     make_entry(&entry, key_type, key, (NodeType) type, dataType, &entryLength);
-
+    //cout << "INSERT INDEX: " << entry.key.intkey << ", " << entry.data.pageNo << endl;
     Status status = SortedPage::insertRecord(key_type, (char *) &entry, entryLength, rid);
     if (status != OK)
         return MINIBASE_CHAIN_ERROR(BTINDEXPAGE, status);
@@ -73,10 +73,11 @@ Status BTIndexPage::deleteKey(const void *key, AttrType key_type, RID &curRid) {
 Status BTIndexPage::get_page_no(const void *key,
                                 AttrType key_type,
                                 PageId &pageNo) {
-    for (int i = slotCnt; i >= 0; i--) {
-        if (slot[i].length != EMPTY_SLOT) {
-            char *key2 = &data[slot[i].offset];
-
+    for (int i = slotCnt; i >= 0; i--)
+    {
+        if (slot[i].length != EMPTY_SLOT)
+        {
+            void *key2 = (data + slot[i].offset);
             int compare = keyCompare(key, key2, key_type);
             if (compare >= 0) // key1 >= key2
             {
@@ -98,26 +99,69 @@ Status BTIndexPage::get_page_no(const void *key,
 Status BTIndexPage::get_first(RID &rid,
                               void *key,
                               PageId &pageNo) {
-    if (this->numberOfRecords() == 0)
+
+    Status status;
+    status = HFPage::firstRecord(rid);
+
+    if ( status != OK ) 
         return NOMORERECS;
 
-    rid.pageNo = curPage;
-    rid.slotNo = -1; // Start at -1 so that when we increment in get_next we start at 0.
+    DataType dataType;
+    KeyDataEntry entry;
+    int length;
 
-    return get_next(rid, key, pageNo);
+    status = getRecord(rid, (char*)&entry, length);
+
+    if ( status != OK ) 
+        return MINIBASE_CHAIN_ERROR(BTINDEXPAGE, status);
+
+    get_key_data(key, &dataType, &entry, length, INDEX);
+
+    pageNo = dataType.pageNo;
+
+    return OK;
+    // if (this->numberOfRecords() == 0)
+    //     return NOMORERECS;
+
+    // rid.pageNo = curPage;
+    // rid.slotNo = -1; // Start at -1 so that when we increment in get_next we start at 0.
+
+    // return get_next(rid, key, pageNo);
 }
 
 Status BTIndexPage::get_next(RID &rid, void *key, PageId &pageNo) {
-    rid.slotNo = rid.slotNo + 1;
+    Status status;
 
-    if (rid.slotNo > slotCnt)
+    status = HFPage::nextRecord(rid, rid);
+
+    if ( status != OK ) 
         return NOMORERECS;
 
-    DataType* dataType = (DataType *) &pageNo;
+    DataType dataType;
+    KeyDataEntry entry;
+    int length;
 
-    KeyDataEntry* entry = (KeyDataEntry *) (data + slot[rid.slotNo].offset);
+    status = getRecord(rid, (char *)&entry, length);
 
-    get_key_data(key, dataType, entry, slot[rid.slotNo].length, (NodeType) type);
+    if ( status != OK ) 
+        return MINIBASE_CHAIN_ERROR(BTINDEXPAGE, status);
+
+    get_key_data(key, &dataType, &entry, length, INDEX);
+
+    pageNo = dataType.pageNo;
+
+    return OK;
+
+    // rid.slotNo = rid.slotNo + 1;
+
+    // if (rid.slotNo > slotCnt)
+    //     return NOMORERECS;
+
+    // DataType* dataType = (DataType *) &pageNo;
+
+    // KeyDataEntry* entry = (KeyDataEntry *) (data + slot[rid.slotNo].offset);
+
+    // get_key_data(key, dataType, entry, slot[rid.slotNo].length, (NodeType) type);
 
     return OK;
 }
