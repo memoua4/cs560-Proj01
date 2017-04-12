@@ -70,9 +70,39 @@ Status BTIndexPage::deleteKey(const void *key, AttrType key_type, RID &curRid) {
     return OK;
 }
 
-Status BTIndexPage::get_page_no(const void *key,
+Status BTIndexPage::get_page_no(const void *key1,
                                 AttrType key_type,
                                 PageId &pageNo) {
+    PageId maxPageNo = INVALID_PAGE;
+    DataType maxDataType;
+
+    RID currentRID;
+    Status status = this->firstRecord(currentRID);
+    while (status == OK)
+    {
+        int len;
+        KeyDataEntry entry;
+        this->getRecord(currentRID, (char *) &entry, len);
+        int key2;
+        DataType data;
+        get_key_data(&key2, &data, &entry, len, (NodeType) type);
+        if (keyCompare(key1, &key2, key_type) >= 0)
+            if (key2 > maxPageNo) {
+                maxPageNo = key2;
+                maxDataType = data;
+            }
+
+        status = this->nextRecord(currentRID, currentRID);
+    }
+
+    if (maxPageNo != INVALID_PAGE)
+        pageNo = maxDataType.pageNo;
+    else
+        pageNo = this->getPrevPage();
+
+    return OK;
+
+    /*
     for (int i = slotCnt; i >= 0; i--)
     {
         if (slot[i].length != EMPTY_SLOT)
@@ -93,6 +123,7 @@ Status BTIndexPage::get_page_no(const void *key,
     }
     pageNo = this->getPrevPage();
     return OK;
+     */
 }
 
 

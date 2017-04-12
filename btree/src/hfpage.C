@@ -29,16 +29,16 @@ void HFPage::init(PageId pageNo) {
 // **********************************************************
 // dump page utlity
 void HFPage::dumpPage() {
-    //int i;
+    int i;
 
     cout << "dumpPage, this: " << this << endl;
     cout << "curPage= " << curPage << ", nextPage=" << nextPage << endl;
     cout << "usedPtr=" << usedPtr << ",  freeSpace=" << freeSpace << ", slotCnt=" << slotCnt << endl;
 
-    //for (i = 0; i <= slotCnt; i++) {
-    //    cout << "slot[" << i << "].offset=" << slot[i].offset << ", slot[" << i << "].length=" << slot[i].length
-    //         << endl;
-    //}
+    for (i = 0; i <= slotCnt; i++) {
+        cout << "slot[" << i << "].offset=" << slot[i].offset << ", slot[" << i << "].length=" << slot[i].length
+             << endl;
+    }
 }
 
 // **********************************************************
