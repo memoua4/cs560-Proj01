@@ -99,7 +99,7 @@ Status BTIndexPage::get_page_no(const void *key,
 Status BTIndexPage::get_first(RID &rid,
                               void *key,
                               PageId &pageNo) {
-    if (slotCnt == 0 && slot[0].length == EMPTY_SLOT)
+    if (this->numberOfRecords() == 0)
         return NOMORERECS;
 
     rid.pageNo = curPage;

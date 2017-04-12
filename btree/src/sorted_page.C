@@ -89,7 +89,7 @@ Status SortedPage::deleteRecord(const RID &rid) {
 
 int SortedPage::numberOfRecords() {
     int numRecords = 0;
-    for (short i = 0; i < slotCnt; i++) {
+    for (short i = 0; i <= slotCnt; i++) {
         if (slot[i].length != EMPTY_SLOT)
             numRecords = numRecords + 1;
     }

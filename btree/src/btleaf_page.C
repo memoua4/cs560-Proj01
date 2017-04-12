@@ -111,7 +111,7 @@ Status BTLeafPage::get_data_rid(void *key,
 Status BTLeafPage::get_first(RID &rid,
                              void *key,
                              RID &dataRid) {
-    if (slotCnt == 0 && slot[0].length == EMPTY_SLOT)
+    if (this->numberOfRecords() == 0)
         return NOMORERECS;
 
     rid.pageNo = curPage;
