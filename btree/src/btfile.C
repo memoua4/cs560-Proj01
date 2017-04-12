@@ -297,6 +297,8 @@ Status BTreeFile::insert(const void *key, const RID rid) {
 
     if (dataKeySize > leafPageSize) {
         status = splitLeafPage(leafPage, leafPageId, (headerPageInfo->height - 1), key, rid);
+        if (status != OK)
+            return MINIBASE_CHAIN_ERROR(BTREE, status);
     } else {
         status = leafPage->insertRec(key, headerPageInfo->keyType, rid, dataRid);
         if (status != OK)
@@ -643,7 +645,6 @@ Status BTreeFile::splitLeafPage(BTLeafPage* leafPage, PageId leafPageId,
         RID newRid;
         PageId newPageId;
         KeyType newKey;
-
 
         status = newRootPage->get_first(newRid, &newKey, newPageId);
 

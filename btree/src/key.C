@@ -81,11 +81,11 @@ void make_entry(KeyDataEntry *target,
     switch (nodeType) {
         case INDEX:
             dataSize = sizeof(PageId);
-            memcpy(target + keySize, &data.pageNo, dataSize);
+            memcpy(target + keySize, &data, dataSize);
             break;
         case LEAF:
             dataSize = sizeof(RID);
-            memcpy(target + keySize, &data.rid, dataSize);
+            memcpy(target + keySize, &data, dataSize);
             break;
         default:
             return;
@@ -116,13 +116,10 @@ void get_key_data(void *targetKey, DataType *targetData,
     // We can calculate the length of the key using the length of the entire entry
     int keyLength = entryLength - dataLength;
 
-    if (source == NULL)
-        source = new KeyDataEntry();
-
     if (targetKey != NULL)
-        memcpy(targetKey, &source, keyLength);
+        memcpy(targetKey, source, keyLength);
     if (targetData != NULL)
-        memcpy(targetData, &source + keyLength, dataLength);
+        memcpy(targetData, source + keyLength, dataLength);
 }
 
 /*

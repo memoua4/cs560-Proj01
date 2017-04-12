@@ -26,12 +26,12 @@ Status BTIndexPage::insertKey(const void *key,
                               PageId pageNo,
                               RID &rid) {
     KeyDataEntry entry;
-    NodeType nodeType = INDEX;
     DataType dataType;
     dataType.pageNo = pageNo;
+    int entryLength;
 
-    int entryLength = 0;
-    make_entry(&entry, key_type, key, nodeType, dataType, &entryLength);
+    make_entry(&entry, key_type, key, (NodeType) type, dataType, &entryLength);
+    //cout << "INSERT INDEX: " << entry.key.intkey << ", " << entry.data.pageNo << endl;
     Status status = SortedPage::insertRecord(key_type, (char *) &entry, entryLength, rid);
     if (status != OK)
         return MINIBASE_CHAIN_ERROR(BTINDEXPAGE, status);
@@ -85,7 +85,7 @@ Status BTIndexPage::get_page_no(const void *key,
 
                 KeyDataEntry* entry = (KeyDataEntry *) key2;
 
-                get_key_data(NULL, dataType, entry, slot[i].length, INDEX);
+                get_key_data(NULL, dataType, entry, slot[i].length, (NodeType) type);
 
                 return OK;
             }
@@ -100,9 +100,9 @@ Status BTIndexPage::get_first(RID &rid,
                               void *key,
                               PageId &pageNo) {
     if (slotCnt == 0)
-        return MINIBASE_FIRST_ERROR(BTINDEXPAGE, NOMORERECS);
+        return NOMORERECS;
 
-    rid.pageNo = pageNo;
+    rid.pageNo = curPage;
     rid.slotNo = -1; // Start at -1 so that when we increment in get_next we start at 0.
 
     return get_next(rid, key, pageNo);
@@ -121,7 +121,7 @@ Status BTIndexPage::get_next(RID &rid, void *key, PageId &pageNo) {
 
     KeyDataEntry* entry = (KeyDataEntry *) (data + slot[rid.slotNo].offset);
 
-    get_key_data(key, dataType, entry, slot[rid.slotNo].length, INDEX);
+    get_key_data(key, dataType, entry, slot[rid.slotNo].length, (NodeType) type);
 
     return OK;
 }

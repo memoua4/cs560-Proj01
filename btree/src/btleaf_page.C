@@ -46,8 +46,10 @@ Status BTLeafPage::insertRec(const void *key,
     dataType.rid = dataRid;
     Status status;
 
-    make_entry(&entry, key_type, key, LEAF, dataType, &entryLength);
+    make_entry(&entry, key_type, key, (NodeType) type, dataType, &entryLength);
 
+    //cout << "INSERT LEAF: " << entry.key.intkey << ", " << entry.data.rid.slotNo << " =/= " << dataRid.slotNo << ", " << entry.data.rid.pageNo << " =/= " << dataRid.pageNo << endl;
+    //cout << sizeof(KeyDataEntry) << ", " << entryLength << endl;
     status = SortedPage::insertRecord(key_type, (char *) &entry, entryLength, rid);
     if (status != OK)
         return MINIBASE_CHAIN_ERROR(BTLEAFPAGE, status);
@@ -82,7 +84,7 @@ Status BTLeafPage::get_data_rid(void *key,
         if (comparison == 0) { // Keys match
             DataType *dataType = (DataType *) &dataRid;
             KeyDataEntry *entry = (KeyDataEntry *) (data + slot[middle].offset);
-            get_key_data(NULL, dataType, entry, slot[middle].length, LEAF);
+            get_key_data(NULL, dataType, entry, slot[middle].length, (NodeType) type);
             return OK;
         } else if (comparison > 0) { // key > key2
             high = middle - 1;
@@ -130,7 +132,7 @@ Status BTLeafPage::get_next(RID &rid,
 
     KeyDataEntry* entry = (KeyDataEntry *) (data + slot[rid.slotNo].offset);
 
-    get_key_data(key, dataType, entry, slot[rid.slotNo].length, INDEX);
+    get_key_data(key, dataType, entry, slot[rid.slotNo].length, (NodeType) type);
 
     return OK;
 }
