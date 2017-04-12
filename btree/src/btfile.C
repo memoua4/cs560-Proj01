@@ -646,17 +646,17 @@ Status BTreeFile::splitLeafPage(BTLeafPage* leafPage, PageId leafPageId,
         PageId newPageId;
         KeyType newKey;
 
-        status = newRootPage->get_first(newRid, &newKey, newPageId);
+        // status = newRootPage->get_first(newRid, &newKey, newPageId);
 
-        if (status != OK)
-            return MINIBASE_CHAIN_ERROR(BTREE, status);
+        // if (status != OK)
+        //     return MINIBASE_CHAIN_ERROR(BTREE, status);
 
         //        cout << "Page Number is " << newPageId << endl;
 
-        status = newRootPage->get_next(newRid, &newKey, newPageId);
+        // status = newRootPage->get_next(newRid, &newKey, newPageId);
 
-        if (status != OK)
-            return MINIBASE_CHAIN_ERROR(BTREE, status);
+        // if (status != OK)
+        //     return MINIBASE_CHAIN_ERROR(BTREE, status);
 
         //        cout << "Page Number2 is " << newPageId << endl;
 
@@ -673,9 +673,16 @@ Status BTreeFile::splitLeafPage(BTLeafPage* leafPage, PageId leafPageId,
         headerPageInfo->rootPageId = newRootPageId;
         headerPageInfo->height = headerPageInfo->height + 1;
     } else {
-        cout << "Insert Here...." << endl;
+        // cout << "Insert Here...." << endl;
+        height--;
         BTIndexPage *parentPage;
         PageId parentPageId = parentPages[height].indexPageId;
+        
+        // for ( int i = 0; i < headerPageInfo->height; i++ ) {
+        // 	cout << "LOOP :::: Parent Page Id == " << parentPages[i].indexPageId << endl;
+        // }
+        // cout << "\t\theight == " << height << endl;
+        // cout << "\t\tParent Page Id = " << parentPageId << endl;
         status = MINIBASE_BM->pinPage(parentPageId, (Page*&) parentPage);
         if (status != OK)
             return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -692,16 +699,30 @@ Status BTreeFile::splitLeafPage(BTLeafPage* leafPage, PageId leafPageId,
         int availableSpace = ((HFPage*) parentPage)->available_space();
         int space = get_key_data_length(key, headerPageInfo->keyType, INDEX);
 
+        // cout << "space = " << space << " and availableSpace = " << availableSpace << endl;
+
+        // cout << "Split Leaf Page " << parentPageId << " and available space = " << availableSpace << endl;
+
         if (space > availableSpace) {
             // split Index Page
-            status = splitIndexPage(parentPage, parentPageId, (height - 1), &recKey);
+            status = splitIndexPage(parentPage, parentPageId, height - 1, &recKey);
         } else {
-            status = parentPage->insertKey(&newLeafFirstKey, headerPageInfo->keyType, ((SortedPage*) newLeafPage)->page_no(), newLeafFirstRid);
+
+        	// cout << "Insert Key...." << endl;
+            status = parentPage->insertKey(&recKey, headerPageInfo->keyType, ((SortedPage*) newLeafPage)->page_no(), recRid);
             if (status != OK)
                 return MINIBASE_CHAIN_ERROR(BTREE, status);
+        	// cout << "Finished Inserting Key..." << endl;
+
+
+       availableSpace = ((HFPage*) parentPage)->available_space();
+
+        // cout << "After availableSpace = " << availableSpace << endl;
+
+
         }
 
-        status = MINIBASE_BM->unpinPage(parentPageId);
+        status = MINIBASE_BM->unpinPage(parentPageId);    
     }
 
     return OK;
@@ -843,6 +864,8 @@ Status BTreeFile::getStartingBTLeafPage(PageId& leafPageId,
     int index = 0;
     RID tmpRid;
     KeyType tmpKey;
+    PageId prevPageId;
+
 
     parentPages[index].indexPageId = INVALID_PAGE;
 
@@ -850,7 +873,9 @@ Status BTreeFile::getStartingBTLeafPage(PageId& leafPageId,
     if (status != OK)
         return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-    while (((SortedPage*) page)->get_type() != LEAF) {
+    cout << "Pin Page Number " << pageNo << endl;
+
+    while (((SortedPage*) page)->get_type() != LEAF && pageNo != INVALID_PAGE) {
         PageId tmpPageNo;
         if (key == NULL) {
             status = ((BTIndexPage*) page)->get_first(tmpRid, &tmpKey, tmpPageNo);
@@ -867,24 +892,34 @@ Status BTreeFile::getStartingBTLeafPage(PageId& leafPageId,
         parentPages[index].indexPageId = pageNo;
         index++;
 
+        // cout << "Page No = " << pageNo << endl;
+
         status = MINIBASE_BM->unpinPage(pageNo);
         if (status != OK)
             return MINIBASE_CHAIN_ERROR(BTREE, status);
-
+cout << "Un Pin Page Number " << pageNo << endl;
         //        cout << "Page No2 is " << pageNo << endl;
+            prevPageId = pageNo;
         pageNo = tmpPageNo;
 
         //        cout << "Page No is " << pageNo << endl;
-        status = MINIBASE_BM->pinPage(pageNo, page);
-        if (status != OK)
-            return MINIBASE_CHAIN_ERROR(BTREE, status);
+       if ( pageNo != INVALID_PAGE ) {
+	        status = MINIBASE_BM->pinPage(pageNo, page);
+	        if (status != OK)
+	            return MINIBASE_CHAIN_ERROR(BTREE, status);
+	        cout << "Pin Page Number " << pageNo << endl;
+      }
     }
 
-    status = MINIBASE_BM->unpinPage(pageNo);
-    if (status != OK)
-        return MINIBASE_CHAIN_ERROR(BTREE, status);
+     if ( pageNo == INVALID_PAGE ) {
+    	leafPageId = prevPageId;
+    } else {
+    	leafPageId = pageNo;
 
-    leafPageId = pageNo;
-
+    	status = MINIBASE_BM->unpinPage(pageNo);
+    	if ( status != OK ) 
+    		return MINIBASE_CHAIN_ERROR(BTREE, status);
+    cout << "UnPin Page Number " << pageNo << endl;
+    }
     return OK;
 }
