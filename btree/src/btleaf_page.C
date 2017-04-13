@@ -68,9 +68,31 @@ Status BTLeafPage::insertRec(const void *key,
  * the DATA record, NOT the rid of the data entry!)
  */
 
-Status BTLeafPage::get_data_rid(void *key,
+Status BTLeafPage::get_data_rid(void *key1,
                                 AttrType key_type,
                                 RID &dataRid) {
+    RID currentRID;
+    KeyDataEntry entry;
+    DataType *dataType = (DataType *) &dataRid;
+
+    Status status = this->firstRecord(currentRID);
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(BTLEAFPAGE, status);
+
+    while (status == OK) {
+        int length;
+        int key2;
+
+        this->getRecord(currentRID, (char *) &entry, length);
+        get_key_data(&key2, dataType, &entry, length, (NodeType) type);
+        if (keyCompare(key1, &key2, key_type) == 0) {
+            return OK;
+        }
+
+        status = this->nextRecord(currentRID, currentRID);
+    }
+
+    /*
     int low = 0;
     int high = slotCnt;
     int middle;
@@ -91,7 +113,7 @@ Status BTLeafPage::get_data_rid(void *key,
         } else if (comparison < 0) { // key < key2
             low = middle + 1;
         }
-    }
+    }*/
 
     return RECNOTFOUND;
 }
@@ -111,26 +133,48 @@ Status BTLeafPage::get_data_rid(void *key,
 Status BTLeafPage::get_first(RID &rid,
                              void *key,
                              RID &dataRid) {
-    if (this->numberOfRecords() == 0)
+    Status status;
+    status = HFPage::firstRecord(rid);
+
+    if (status != OK)
         return NOMORERECS;
 
-    rid.pageNo = curPage;
-    rid.slotNo = -1;
+    DataType dataType;
+    KeyDataEntry entry;
+    int length;
 
-    return get_next(rid, key, dataRid);
+    status = getRecord(rid, (char *) &entry, length);
+
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(BTINDEXPAGE, status);
+
+    get_key_data(key, &dataType, &entry, length, (NodeType) type);
+
+    dataRid = dataType.rid;
+
+    return OK;
 }
 
 Status BTLeafPage::get_next(RID &rid, void *key, RID &dataRid) {
-    rid.slotNo = rid.slotNo + 1;
+    Status status;
 
-    if (rid.slotNo > slotCnt)
+    status = HFPage::nextRecord(rid, rid);
+
+    if (status != OK)
         return NOMORERECS;
 
-    DataType* dataType = (DataType *) &dataRid;
+    DataType dataType;
+    KeyDataEntry entry;
+    int length;
 
-    KeyDataEntry* entry = (KeyDataEntry *) (data + slot[rid.slotNo].offset);
+    status = this->getRecord(rid, (char *) &entry, length);
 
-    get_key_data(key, dataType, entry, slot[rid.slotNo].length, (NodeType) type);
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(BTINDEXPAGE, status);
+
+    get_key_data(key, &dataType, &entry, length, (NodeType) type);
+
+    dataRid = dataType.rid;
 
     return OK;
 }

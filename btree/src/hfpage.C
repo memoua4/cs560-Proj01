@@ -179,9 +179,12 @@ Status HFPage::nextRecord(RID curRid, RID &nextRid) {
     // If we're under 0, it's invalid
     if (curNo < 0 || curNo > slotCnt)
         return FAIL;
+
+    /*
     // If the current slot is empty, we got an invalid slot
     if (slot[curNo].length == EMPTY_SLOT)
         return FAIL;
+        */
 
     // Find the next record and return ok
     for (int i = curNo + 1; i <= slotCnt; i++) {

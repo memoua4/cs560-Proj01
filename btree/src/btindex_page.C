@@ -146,7 +146,7 @@ Status BTIndexPage::get_first(RID &rid,
     if ( status != OK ) 
         return MINIBASE_CHAIN_ERROR(BTINDEXPAGE, status);
 
-    get_key_data(key, &dataType, &entry, length, INDEX);
+    get_key_data(key, &dataType, &entry, length, (NodeType) type);
 
     pageNo = dataType.pageNo;
 
@@ -170,7 +170,7 @@ Status BTIndexPage::get_next(RID &rid, void *key, PageId &pageNo) {
     if ( status != OK ) 
         return MINIBASE_CHAIN_ERROR(BTINDEXPAGE, status);
 
-    get_key_data(key, &dataType, &entry, length, INDEX);
+    get_key_data(key, &dataType, &entry, length, (NodeType) type);
 
     pageNo = dataType.pageNo;
 
