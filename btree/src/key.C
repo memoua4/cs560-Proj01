@@ -56,32 +56,41 @@ int keyCompare(const void *key1, const void *key2, AttrType type) {
  * Ensures that <data> part begins at an offset which is an even 
  * multiple of sizeof(PageNo) for alignment purposes.
  */
-void make_entry(KeyDataEntry *target,
-                AttrType keyType, const void *key,
-                NodeType nodeType, DataType data,
-                int *entryLength) {
-    // Cast the data packet as a character array
-    char *targetLoc = (char *) target;
+void make_entry(KeyDataEntry *targetOut,
+                AttrType keyTypeIn, const void *keyIn,
+                NodeType nodeTypeIn, DataType dataIn,
+                int *entryLengthOut) {
+    /*
+     * targetOut - The pre-allocated storage to write the key & data to
+     * keyTypeIn - The type of the key to write to the target
+     * keyIn - The actual key to write to the target
+     * nodeTypeIn - The type of the data to write to the target
+     * dataIn - The actual data to write to the target
+     * entryLengthOut - The length of the target after being written to in bytes
+     */
 
-    // Get the size of the key
-    int keySize = get_key_length(key, keyType);
+    // Cast the dataIn packet as a character array
+    char *targetLoc = (char *) targetOut;
+
+    // Get the size of the keyIn
+    int keySize = get_key_length(keyIn, keyTypeIn);
     // Make sure it's not too big
     if (keySize > MAX_KEY_SIZE1) {
         cout << "TRIED TO INSERT KEY TOO LARGE!" << endl;
         return;
     }
-    // Make sure that the key size is valid, and perform the memcpy to move the key data to the target
+    // Make sure that the keyIn size is valid, and perform the memcpy to move the keyIn dataIn to the target
     if (keySize != -1)
-        memcpy(targetLoc, key, keySize);
+        memcpy(targetLoc, keyIn, keySize);
 
-    // Get the size of the data
-    int dataSize = nodeType == INDEX ? sizeof (PageId) : nodeType == LEAF ? sizeof (RID) : 0;
-    // If datasize is not 0, and is valid, then copy the data to the target
+    // Get the size of the dataIn
+    int dataSize = nodeTypeIn == INDEX ? sizeof (PageId) : nodeTypeIn == LEAF ? sizeof (RID) : 0;
+    // If datasize is not 0, and is valid, then copy the dataIn to the target
     if (dataSize != 0)
-        memcpy(targetLoc + keySize, &data, dataSize);
+        memcpy(targetLoc + keySize, &dataIn, dataSize);
 
     // Calculate the length of the entry
-    *entryLength = keySize + dataSize;
+    *entryLengthOut = keySize + dataSize;
 }
 
 
@@ -90,14 +99,23 @@ void make_entry(KeyDataEntry *target,
  * Needs a) memory chunk holding the pair (*psource) and, b) the length
  * of the data chunk (to calculate data start of the <data> part).
  */
-void get_key_data(void *targetKey, DataType *targetData,
-                  KeyDataEntry *source, int entryLength, NodeType nodeType) {
+void get_key_data(void *targetKeyOut, DataType *targetDataOut,
+                  KeyDataEntry *sourceIn, int entryLengthIn, NodeType nodeTypeIn) {
+    /*
+     * TargetKeyOut must be pre-allocated to hold the key (KeyType)
+     * TargetDataOut must be pre-allocated to hold the data (DataType)
+     * SourceIn must contain the data to be written to TargetKeyOut and TargetDataOut
+     * EntryLengthIn The length of sourceIn in bytes
+     * NodeType The type of the data in SourceIn
+     */
+
+
     // If we want to get the key & data from a blob, use memcpy
-    char *sourceLoc = (char *) source;
+    char *sourceLoc = (char *) sourceIn;
 
     // Get the length of the data
     int dataLength;
-    switch (nodeType) {
+    switch (nodeTypeIn) {
         case INDEX:
             dataLength = sizeof(PageId);
             break;
@@ -108,25 +126,30 @@ void get_key_data(void *targetKey, DataType *targetData,
             return;
     }
     // We can calculate the length of the key using the length of the entire entry
-    int keyLength = entryLength - dataLength;
+    int keyLength = entryLengthIn - dataLength;
 
     // Perform memcpy if the target to copy to is not null
-    if (targetKey != NULL)
-        memcpy(targetKey, sourceLoc, keyLength);
-    if (targetData != NULL)
-        memcpy(targetData, sourceLoc + keyLength, dataLength);
+    if (targetKeyOut != NULL)
+        memcpy(targetKeyOut, sourceLoc, keyLength);
+    if (targetDataOut != NULL)
+        memcpy(targetDataOut, sourceLoc + keyLength, dataLength);
 }
 
 /*
  * get_key_length: return key length in given key_type
  */
-int get_key_length(const void *key, const AttrType keyType) {
-    // Get the length of a given key using a switch statement
-    switch (keyType) {
+int get_key_length(const void *keyIn, const AttrType keyTypeIn) {
+    /*
+     * keyIn is the key to get the length of
+     * keyTypeIn is the keyType of the key
+     */
+
+    // Get the length of a given keyIn using a switch statement
+    switch (keyTypeIn) {
         case attrInteger:
             return sizeof(int);
         case attrString:
-            return strlen((char *) key) + 1;
+            return strlen((char *) keyIn) + 1;
         default:
             return -1;
     }
@@ -135,11 +158,17 @@ int get_key_length(const void *key, const AttrType keyType) {
 /*
  * get_key_data_length: return (key+data) length in given key_type
  */
-int get_key_data_length(const void *key, const AttrType keyType,
-                        const NodeType nodeType) {
-    // Get the length of a key & data blob by adding the key length to the size of the data
-    int keyLength = get_key_length(key, keyType);
-    switch (nodeType) {
+int get_key_data_length(const void *keyIn, const AttrType keyTypeIn,
+                        const NodeType nodeTypeIn) {
+    /*
+     * keyIn - The key in DataKeyEntry form to get the length of
+     * keyTypeIn - The key type of the key found in key
+     * nodeTypeIn - The data type of the data in key
+     */
+
+    // Get the length of a keyIn & data blob by adding the key length to the size of the data
+    int keyLength = get_key_length(keyIn, keyTypeIn);
+    switch (nodeTypeIn) {
         case INDEX:
             return keyLength + sizeof(PageId);
         case LEAF:
