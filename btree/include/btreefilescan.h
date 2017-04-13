@@ -29,7 +29,7 @@ public:
     int keysize(); // size of the key
 
     // destructor
-    BTreeFileScan(BTreeFile *file, BTLeafPage *leaf);
+    BTreeFileScan(BTreeFile *file, BTLeafPage *leaf, const void *lo_key, const void *hi_key, AttrType keyType);
     ~BTreeFileScan();
 
 private:
@@ -37,9 +37,10 @@ private:
     BTLeafPage *currentLeaf;
     RID currentLeafRID;
     bool currentDeleted;
+    AttrType keyType;
 
     const void * endKey;
-
+    const void * startKey;
 
 };
 

@@ -12,7 +12,7 @@
  * BTREE things (traversing trees).
  */
 
-BTreeFileScan::BTreeFileScan(BTreeFile *file, BTLeafPage *firstLeaf) {
+BTreeFileScan::BTreeFileScan(BTreeFile *file, BTLeafPage *firstLeaf, const void *lo_key, const void* hi_key, AttrType keyType) {
     this->file = file;
     this->currentLeaf = firstLeaf;
     if (firstLeaf != NULL) {
@@ -24,6 +24,21 @@ BTreeFileScan::BTreeFileScan(BTreeFile *file, BTLeafPage *firstLeaf) {
         this->currentLeafRID.pageNo = INVALID_PAGE;
     }
     this->currentDeleted = false;
+    this->startKey = lo_key;
+    this->endKey = hi_key;
+    this->keyType = keyType;
+
+    KeyType keyptr;
+    RID dataRID;
+    Status status;
+    if ( this->startKey != NULL ) {
+        status = this->currentLeaf->get_first(this->currentLeafRID, &keyptr, dataRID);
+
+        while ( status == OK && keyCompare(this->startKey, &keyptr, keyType) < 0 ) {
+            status = this->currentLeaf->get_next(this->currentLeafRID, &keyptr, dataRID);
+        }
+
+    }
 }
 
 BTreeFileScan::~BTreeFileScan() {
@@ -75,6 +90,15 @@ Status BTreeFileScan::get_next(RID &pageRID, void *keyptr) {
 
         // Grab the first element of the new page
         status = this->currentLeaf->get_first(this->currentLeafRID, keyptr, dataRID);
+    }
+
+    if ( this->endKey != NULL && keyCompare(keyptr, this->endKey, this->keyType) >= 0 ) {
+        Status pinStatus = MINIBASE_BM->unpinPage(this->currentLeaf->page_no());
+        if ( pinStatus != OK ) 
+            return MINIBASE_CHAIN_ERROR(BTREE, status);
+        this->currentLeaf = NULL;
+        this->currentLeafRID.pageNo = INVALID_PAGE;
+        return DONE;
     }
 
     this->currentDeleted = false;

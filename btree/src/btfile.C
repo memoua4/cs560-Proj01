@@ -398,101 +398,101 @@ Status BTreeFile::insert(const void *key, const RID rid) {
 
         /* Want to check if the curKey stored in parents is Greater than Parent */
         int height = headerPageInfo->height - 2;       
-        if ( height >= 0 ) {
-            // cout << "New Key Entry..." << endl;
+        // if ( height >= 0 ) {
+        //     // cout << "New Key Entry..." << endl;
 
-            PageId parentPageId = parentPages[height].indexPageId;
-            BTIndexPage * parentPage;
+        //     PageId parentPageId = parentPages[height].indexPageId;
+        //     BTIndexPage * parentPage;
 
-            status = MINIBASE_BM->pinPage(parentPageId, (Page*&)parentPage);
-            if ( status != OK ) 
-                return MINIBASE_CHAIN_ERROR(BTREE, status);
+        //     status = MINIBASE_BM->pinPage(parentPageId, (Page*&)parentPage);
+        //     if ( status != OK ) 
+        //         return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-            RID curRid;
-            KeyType curKey;
-            PageId curPageNo = INVALID_PAGE;
+        //     RID curRid;
+        //     KeyType curKey;
+        //     PageId curPageNo = INVALID_PAGE;
 
-            status = parentPage->get_first(curRid, &curKey, curPageNo);
+        //     status = parentPage->get_first(curRid, &curKey, curPageNo);
 
-            while ( curPageNo != leafPageId && status == OK ) {
-                status = parentPage->get_next(curRid, &curKey, curPageNo);
-            }
+        //     while ( curPageNo != leafPageId && status == OK ) {
+        //         status = parentPage->get_next(curRid, &curKey, curPageNo);
+        //     }
 
-            if ( curPageNo != INVALID_PAGE ) {
-                // status = parentPage->deleteKey(&curKey, headerPageInfo->keyType, curRid);
-                if ( status != OK ) 
-                    return MINIBASE_CHAIN_ERROR(BTREE, status);
+            // if ( curPageNo != INVALID_PAGE ) {
+            //     // status = parentPage->deleteKey(&curKey, headerPageInfo->keyType, curRid);
+            //     RID recRid, recDataRid;
+            //     KeyType recKey;
+            //     RID tmpRid;
 
-                RID recRid, recDataRid;
-                KeyType recKey;
+            //     status = leafPage->get_first(recRid, &recKey, recDataRid);
 
-                status = leafPage->get_first(recRid, &recKey, recDataRid);
+            //     if ( status != OK ) 
+            //         return MINIBASE_CHAIN_ERROR(BTREE, status);
 
-                cout << "----------------------" << curKey.intkey << " and " << recKey.intkey << endl;
+            //     leafPageSize = ((HFPage*) leafPage)->available_space();
+            //     if ( keyCompare(&curKey, &recKey, headerPageInfo->keyType) > 0 ) {
+            //         cout << curKey.intkey << " > " << recKey.intkey << endl;
+            //         status = parentPage->deleteKey(&curKey, headerPageInfo->keyType, tmpRid);
+            //         if ( status != OK ) 
+            //             return MINIBASE_CHAIN_ERROR(BTREE, status);
 
+            //         status = parentPage->insertKey(&recKey, headerPageInfo->keyType, ((SortedPage*)leafPage)->page_no(), tmpRid);
 
+            //         if ( status != OK ) {
+            //             cout << "Could not Insert Properly....." << endl;
+            //             return MINIBASE_CHAIN_ERROR(BTREE, status);
+            //         }
+            //     }
+            //     status = MINIBASE_BM->unpinPage(parentPageId);
 
-                // if ( status != OK ) 
-                //     return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-                // status = parentPage->insertKey(key, headerPageInfo->keyType, ((SortedPage*)leafPage)->page_no(), recRid);
-
-                // if ( status != OK ) 
-                //     return MINIBASE_CHAIN_ERROR(BTREE, status);
-            }
-        }
-
-//              status = leafPage->get_first(recRid, &recKey, recDataRid);
-//             if ( status != OK ) 
-//                 return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-//              status = ((BTIndexPage*)parentPage)->insertKey(&recKey, headerPageInfo->keyType, ((SortedPage*) leafPage)->page_no(), recRid);
-
-//              if ( status != OK ) 
-//                 return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-//             // cout << "Added New Key" << endl;
-//         }
-
+            //     if ( status != OK ) 
+            //         return MINIBASE_CHAIN_ERROR(BTREE, status);
+            // }
+        // }
     }
-    // printPage();
+
+    status = MINIBASE_BM->unpinPage(leafPageId);
+
+    if ( status != OK ) 
+        return MINIBASE_CHAIN_ERROR(BTREE, status);    
+        // printPage();
     delete [] parentPages;
     parentPages = new IndexPage[headerPageInfo->height];
 
     return OK;
 }
-int c = 0;
+// int c = 0;
 Status BTreeFile::Delete(const void *key, const RID rid) {
-    if ( c == 0 ) {
-        cout << "Delete --------------- " << endl;
-        printPage();
-        c++;
-        exit(1);
+    // if ( c == 0 ) {
+    //     cout << "Delete --------------- " << endl;
+    //     printPage();
+    //     c++;
+    //     exit(1);
+    // }
+    Status status;
+    PageId pageId;
+    BTLeafPage* page;
+
+    status = getStartingBTLeafPage(pageId, key);
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+    status = MINIBASE_BM->pinPage(pageId, (Page*&) page);
+
+    if (status != OK)
+        return MINIBASE_CHAIN_ERROR(BTREE, status);
+
+    RID dataRid;
+
+    if ( page->get_data_rid(key, headerPageInfo->keyType, dataRid) == OK ) {
+    	status = ((SortedPage*)page)->deleteRecord(dataRid);
+    	if ( status != OK ) {
+    		return MINIBASE_CHAIN_ERROR(BTREE, status);
+    	}
+    	return OK;
     }
-//     Status status;
-//     PageId pageId;
-//     BTLeafPage* page;
 
-//     status = getStartingBTLeafPage(pageId, key);
-//     if (status != OK)
-//         return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-//     status = MINIBASE_BM->pinPage(pageId, (Page*&) page);
-// page->dumpPage();
-//     if (status != OK)
-//         return MINIBASE_CHAIN_ERROR(BTREE, status);
-
-//     RID dataRid;
-
-//     if ( page->get_data_rid(key, headerPageInfo->keyType, dataRid) == OK ) {
-//     	status = ((SortedPage*)page)->deleteRecord(dataRid);
-//     	if ( status != OK ) {
-//     		return MINIBASE_CHAIN_ERROR(BTREE, status);
-//     	}
-//     	return OK;
-//     }
-
-//     return RECNOTFOUND;
+    return RECNOTFOUND;
 }
 
 IndexFileScan *BTreeFile::new_scan(const void *lo_key, const void *hi_key) {
@@ -516,10 +516,7 @@ IndexFileScan *BTreeFile::new_scan(const void *lo_key, const void *hi_key) {
     	return NULL;
     }
 
-    BTreeFileScan *scan= new BTreeFileScan(this, page);
-
-    scan->endKey = hi_key;
-
+    BTreeFileScan *scan= new BTreeFileScan(this, page, lo_key, hi_key, headerPageInfo->keyType);
     return scan;
 }
 
@@ -529,7 +526,6 @@ int BTreeFile::keysize() {
 
 Status BTreeFile::splitLeafPage(BTLeafPage* leafPage, PageId leafPageId,
         int height, const void* key, const RID rid) {
-    //    cout << "Attempting to Split Now" << endl;
     Status status;
     BTLeafPage* newLeafPage;
     PageId newLeafPageId;
@@ -539,8 +535,6 @@ Status BTreeFile::splitLeafPage(BTLeafPage* leafPage, PageId leafPageId,
         return MINIBASE_CHAIN_ERROR(BTREE, status);
 
     newLeafPage->init(newLeafPageId);
-// cout << "New Leaf Page Id " << newLeafPageId << endl;
-    //    cout << "Finished Creating a New Page" << endl;
     int totalRec = ((SortedPage*) leafPage)->numberOfRecords();
     int halfRec;
     if (totalRec % 2 == 0)
@@ -557,7 +551,6 @@ Status BTreeFile::splitLeafPage(BTLeafPage* leafPage, PageId leafPageId,
     status = leafPage->get_first(rid2, &dataKey, dataRid2);
     if (status != OK)
         return MINIBASE_CHAIN_ERROR(BTREE, status);
-    //    cout << "Got the First Record..." << endl;
     KeyType firstKey = dataKey;
     RID firstRid = rid2;
 
@@ -566,17 +559,13 @@ Status BTreeFile::splitLeafPage(BTLeafPage* leafPage, PageId leafPageId,
     for (; count < halfRec; count++)
         leafPage->get_next(rid2, &dataKey, dataRid2);
 
-    //    cout << "Got the Half Record..." << endl;
     RID tmpRid;
 
     status = newLeafPage->insertRec(&dataKey, headerPageInfo->keyType, dataRid2, tmpRid);
     if (status != OK)
-        //        cout << "Failed to insert the first key" << endl;
         return MINIBASE_CHAIN_ERROR(BTREE, status);
 
     status = ((HFPage*)leafPage)->deleteRecord(rid2);
-
-    //        cout << "Finished inserting the first key..." << endl;
     KeyType newLeafFirstKey = dataKey;
     RID newLeafFirstRid = rid2;
 
@@ -596,8 +585,6 @@ Status BTreeFile::splitLeafPage(BTLeafPage* leafPage, PageId leafPageId,
     } else {
         status = newLeafPage->insertRec(key, headerPageInfo->keyType, rid, tmpRid);
     }
-
-// printPage();
 
     if (parentPages[height].indexPageId == INVALID_PAGE) {
         BTIndexPage *newRootPage;
@@ -623,15 +610,11 @@ Status BTreeFile::splitLeafPage(BTLeafPage* leafPage, PageId leafPageId,
         status = newLeafPage->get_first(recRid, &recKey, recDataRid);
         if (status != OK)
             return MINIBASE_CHAIN_ERROR(BTREE, status);
-        // status = newRootPage->insertKey(&firstKey, headerPageInfo->keyType, ((SortedPage*) leafPage)->page_no(), firstRid);
-        // if (status != OK)
-        //     return MINIBASE_CHAIN_ERROR(BTREE, status);
-
         status = newRootPage->insertKey(&recKey, headerPageInfo->keyType, ((SortedPage*) newLeafPage)->page_no(), tmpRid);
-// cout << "-----------------------------------" << newLeafPageId << " " << newLeafFirstKey.intkey << "----------------------------------------" << endl;
-// cout << "2-----------" << leafPageId << " " << recKey.intkey << "----------------" << endl;           
+
         if (status != OK)
             return MINIBASE_CHAIN_ERROR(BTREE, status);
+
         status = MINIBASE_BM->unpinPage(newRootPageId, true);
         if (status != OK)
             return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -688,7 +671,6 @@ Status BTreeFile::splitLeafPage(BTLeafPage* leafPage, PageId leafPageId,
             
 
             status = leafPage->get_first(recRid, &recKey, recDataRid);
- // cout << "2-----------" << leafPageId << " " << recKey.intkey << "----------------" << endl;           
             if ( status != OK ) 
                 return MINIBASE_CHAIN_ERROR(BTREE, status);
 
@@ -697,7 +679,6 @@ Status BTreeFile::splitLeafPage(BTLeafPage* leafPage, PageId leafPageId,
              if ( status != OK ) 
                 return MINIBASE_CHAIN_ERROR(BTREE, status);
             
- // cout << "2-----------" << leafPageId << " " << recKey.intkey << "----------------" << endl;           
         }
 
         status = MINIBASE_BM->unpinPage(parentPageId);    
