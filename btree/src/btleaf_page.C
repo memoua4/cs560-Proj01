@@ -67,30 +67,48 @@ Status BTLeafPage::insertRec(const void *key,
  * rid of the data record. (dataRid contains the RID of
  * the DATA record, NOT the rid of the data entry!)
  */
+// Status BTLeafPage::get_first(RID &rid,
+//                              void *key,
+//                              RID &dataRid) {
 
-Status BTLeafPage::get_data_rid(void *key1,
+Status BTLeafPage::get_data_rid(const void *key1,
                                 AttrType key_type,
                                 RID &dataRid) {
     RID currentRID;
-    KeyDataEntry entry;
-    DataType *dataType = (DataType *) &dataRid;
+    Status status;
+    KeyType key2;
 
-    Status status = this->firstRecord(currentRID);
-    if (status != OK)
-        return MINIBASE_CHAIN_ERROR(BTLEAFPAGE, status);
+    status = get_first(currentRID, &key2, dataRid);
+    if ( status != OK ) 
+        return NOMORERECS;
 
-    while (status == OK) {
-        int length;
-        int key2;
-
-        this->getRecord(currentRID, (char *) &entry, length);
-        get_key_data(&key2, dataType, &entry, length, (NodeType) type);
-        if (keyCompare(key1, &key2, key_type) == 0) {
+    while ( status == OK ) {
+        if ( keyCompare(key1, &key2, key_type) == 0 ) {
             return OK;
         }
-
-        status = this->nextRecord(currentRID, currentRID);
+        // cout << "get_next" << endl;
+        status = get_next(currentRID, &key2, dataRid);
     }
+
+    // KeyDataEntry entry;
+    // DataType *dataType = (DataType *) &dataRid;
+
+    // Status status = this->firstRecord(currentRID);
+    // if (status != OK)
+    //     return MINIBASE_CHAIN_ERROR(BTLEAFPAGE, status);
+
+    // while (status == OK) {
+    //     int length;
+    //     int key2;
+
+    //     this->getRecord(currentRID, (char *) &entry, length);
+    //     get_key_data(&key2, dataType, &entry, length, (NodeType) type);
+    //     if (keyCompare(key1, &key2, key_type) == 0) {
+    //         return OK;
+    //     }
+
+    //     status = this->nextRecord(currentRID, currentRID);
+    // }
 
     /*
     int low = 0;
