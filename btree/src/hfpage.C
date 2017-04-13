@@ -177,8 +177,8 @@ Status HFPage::nextRecord(RID curRid, RID &nextRid) {
     if (curRid.pageNo != curPage)
         return FAIL;
     // If we're under 0, it's invalid
-    // if (curNo < 0 || curNo > slotCnt)
-    //     return FAIL;
+    if (curNo < 0 || curNo > slotCnt)
+        return FAIL;
 
     /*
     // If the current slot is empty, we got an invalid slot
