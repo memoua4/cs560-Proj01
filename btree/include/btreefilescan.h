@@ -38,6 +38,8 @@ private:
     RID currentLeafRID;
     bool currentDeleted;
 
+    const void * endKey;
+
 
 };
 
