@@ -40,6 +40,7 @@ Status SortedPage::insertRecord(AttrType keyType,
                                 char *recPtr,
                                 int recLen,
                                 RID &rid) {
+    // Insert the record as usual
     Status status = HFPage::insertRecord(recPtr, recLen, rid);
     if (status != OK)
         return MINIBASE_CHAIN_ERROR(SORTEDPAGE, status);
@@ -47,7 +48,26 @@ Status SortedPage::insertRecord(AttrType keyType,
     if (keyType != attrInteger && keyType != attrString)
         return MINIBASE_FIRST_ERROR(SORTEDPAGE, ATTRNOTFOUND);
 
-    // Now sort the data using a lambda function
+    // Sorting using bubble sort (Doesn't seem to work, use other sort instead!)
+    /*for (int i = 0; i <= slotCnt; i++) {
+        for (int j = 0; j <= slotCnt; j++) {
+            if (i != j) {
+                if (slot[i].length == EMPTY_SLOT)
+                    continue;
+                if (slot[j].length == EMPTY_SLOT)
+                    continue;
+                char *firstData = &this->data[slot[i].offset];
+                char *secondData = &this->data[slot[j].offset];
+                if (keyCompare((void *) firstData, (void *) secondData, keyType) < 0) {
+                    slot_t temp;
+                    temp = slot[i];
+                    slot[i] = slot[j];
+                    slot[j] = temp;
+                }
+            }
+        }
+    }*/
+    // Sort the data using a lambda function
     std::sort(slot, slot + this->slotCnt + 1, [&](const slot_t first, const slot_t second) -> bool {
         if (first.length == EMPTY_SLOT)
             return false;
@@ -76,6 +96,7 @@ Status SortedPage::deleteRecord(const RID &rid) {
 }
 
 int SortedPage::numberOfRecords() {
+    // Go through each record and check if it's valid
     int numRecords = 0;
     for (short i = 0; i <= slotCnt; i++) {
         if (slot[i].length != EMPTY_SLOT)
