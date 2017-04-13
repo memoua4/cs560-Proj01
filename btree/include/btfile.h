@@ -80,6 +80,8 @@ private:
 
     Status splitIndexPage(BTIndexPage *page, PageId pageId, int height, void* recKey);
 
+    void printPage();
+
     };
 
 #endif
