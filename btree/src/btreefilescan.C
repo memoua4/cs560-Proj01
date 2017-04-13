@@ -14,6 +14,7 @@
 
 BTreeFileScan::BTreeFileScan(BTreeFile *file, BTLeafPage *firstLeaf) {
     this->file = file;
+    this->currentLeaf = firstLeaf;
     if (firstLeaf != NULL) {
         Status status = MINIBASE_BM->pinPage(this->currentLeaf->page_no(), (Page *&) this->currentLeaf);
         if (status != OK) {
@@ -53,7 +54,7 @@ Status BTreeFileScan::get_next(RID &pageRID, void *keyptr) {
     // While we have no more records on the leaf page, traverse the linked list of pages
     while (status == NOMORERECS) {
         // Advance to the next page in the linked list
-        PageId nextPageID = this->currentLeaf->page_no();
+        PageId nextPageID = this->currentLeaf->getNextPage();
 
         // Unpin the last page
         Status pinStatus = MINIBASE_BM->unpinPage(this->currentLeaf->page_no());
