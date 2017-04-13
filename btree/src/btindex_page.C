@@ -35,7 +35,7 @@ Status BTIndexPage::insertKey(const void *key,
     Status status = SortedPage::insertRecord(key_type, (char *) &entry, entryLength, rid);
     if (status != OK)
         return MINIBASE_CHAIN_ERROR(BTINDEXPAGE, status);
-
+    // cout << "Inserted in Insert Key " << endl;
     return OK;
 }
 
@@ -74,37 +74,24 @@ Status BTIndexPage::get_page_no(const void *key1,
                                 AttrType key_type,
                                 PageId &pageNo) {
     PageId maxPageNo = INVALID_PAGE;
-    //DataType maxDataType;
-	PageId prevPageId;
+    PageId prevPageId;
     RID currentRID;
-	PageId tempPageNo;
-	KeyType key;
+    PageId tempPageNo;
+    void * key;
 
-    Status status = this->get_first(currentRID, &key, tempPageNo);
-    while (status == OK)
-    {
-    //    int len;
-    //    KeyDataEntry entry;
-        //this->getRecord(currentRID, (char *) &entry, len);
-    //    int key2;
-    //    DataType data;
-        //get_key_data(&key2, &data, &entry, len, (NodeType) type);
-        if (keyCompare(key1, &key, key_type) >= 0) {
-//            if (key2 > maxPageNo) {
-                maxPageNo = tempPageNo;
-               // maxDataType = data;
-		}
-				//            }
-		prevPageId = tempPageNo;
+    Status status = get_first(currentRID, &key, tempPageNo);
+
+    while ( keyCompare(key1, &key, key_type) > 0 && status == OK ) {
+        maxPageNo = tempPageNo;
         status = get_next(currentRID, &key, tempPageNo);
     }
 
-    if (maxPageNo != INVALID_PAGE) {
+    if ( maxPageNo == INVALID_PAGE && status == OK ) {
+        pageNo = tempPageNo;
+    } else {
         pageNo = maxPageNo;
-	} else {
-		pageNo = prevPageId;
-	}
-	
+    }
+
     return OK;
 
     /*
