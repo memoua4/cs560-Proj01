@@ -36,18 +36,21 @@ const char *SortedPage::Errors[SortedPage::NR_ERRORS] = {
  *    o rid is the record id of the record inserted.
  */
 
-Status SortedPage::insertRecord(AttrType keyType,
-                                char *recPtr,
-                                int recLen,
-                                RID &rid) {
-    Status status = HFPage::insertRecord(recPtr, recLen, rid);
+Status SortedPage::insertRecord(AttrType keyTypeIn,
+                                char *recPtrIn,
+                                int recLenIn,
+                                RID &ridOut) {
+    // Insert the record as usual
+    Status status = HFPage::insertRecord(recPtrIn, recLenIn, ridOut);
     if (status != OK)
         return MINIBASE_CHAIN_ERROR(SORTEDPAGE, status);
 
-    if (keyType != attrInteger && keyType != attrString)
+    if (keyTypeIn != attrInteger && keyTypeIn != attrString)
         return MINIBASE_FIRST_ERROR(SORTEDPAGE, ATTRNOTFOUND);
 
-    // Now sort the data using a lambda function
+    // Does this sort work yet? Need to confirm...
+
+    // Sort the data using a lambda function
     std::sort(slot, slot + this->slotCnt + 1, [&](const slot_t first, const slot_t second) -> bool {
         if (first.length == EMPTY_SLOT)
             return false;
@@ -57,7 +60,7 @@ Status SortedPage::insertRecord(AttrType keyType,
         short secondOffset = second.offset;
         char *firstData = &this->data[firstOffset];
         char *secondData = &this->data[secondOffset];
-        return keyCompare(firstData, secondData, keyType) < 0;
+        return keyCompare(firstData, secondData, keyTypeIn) < 0;
     });
 
     return OK;
@@ -71,11 +74,12 @@ Status SortedPage::insertRecord(AttrType keyType,
  * HFPage::deleteRecord().
  */
 
-Status SortedPage::deleteRecord(const RID &rid) {
-    return HFPage::deleteRecord(rid);
+Status SortedPage::deleteRecord(const RID &ridOut) {
+    return HFPage::deleteRecord(ridOut);
 }
 
 int SortedPage::numberOfRecords() {
+    // Go through each record and check if it's valid
     int numRecords = 0;
     for (short i = 0; i <= slotCnt; i++) {
         if (slot[i].length != EMPTY_SLOT)

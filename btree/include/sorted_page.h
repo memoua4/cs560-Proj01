@@ -57,14 +57,14 @@ public:
 //
 //   o rid is the record id of the record inserted.
 //
-    Status insertRecord(AttrType key_type,
-                        char *recPtr, int recLen,
-                        RID &rid);
+    Status insertRecord(AttrType keyTypeIn,
+                        char *recPtrIn, int recLenIn,
+                        RID &ridOut);
 
 
 // Deletes a record from a sorted record page. It just calls
 // HFPage::deleteRecord()
-    Status deleteRecord(const RID &rid);
+    Status deleteRecord(const RID &ridOut);
 
     // The remaining functions of HFPage are still visible.
     // return number of records

@@ -110,29 +110,6 @@ Status BTLeafPage::get_data_rid(const void *key1,
     //     status = this->nextRecord(currentRID, currentRID);
     // }
 
-    /*
-    int low = 0;
-    int high = slotCnt;
-    int middle;
-
-    // Binary search while low <= high
-    while (low <= high) {
-        middle = (low + high) / 2;
-
-        void *key2 = data + slot[middle].offset;
-        int comparison = keyCompare(key, key2, key_type);
-        if (comparison == 0) { // Keys match
-            DataType *dataType = (DataType *) &dataRid;
-            KeyDataEntry *entry = (KeyDataEntry *) (data + slot[middle].offset);
-            get_key_data(NULL, dataType, entry, slot[middle].length, (NodeType) type);
-            return OK;
-        } else if (comparison > 0) { // key > key2
-            high = middle - 1;
-        } else if (comparison < 0) { // key < key2
-            low = middle + 1;
-        }
-    }*/
-
     return RECNOTFOUND;
 }
 

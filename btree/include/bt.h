@@ -129,10 +129,10 @@ int keyCompare(const void *key1, const void *key2, AttrType t);
  * multiple of sizeof(PageNo) for alignment purposes.
  */
 
-void make_entry(KeyDataEntry *target,
-                AttrType key_type, const void *key,
-                NodeType ndtype, DataType data,
-                int *pentry_len);
+void make_entry(KeyDataEntry *targetOut,
+                AttrType keyTypeIn, const void *keyIn,
+                NodeType nodeTypeIn, DataType dataIn,
+                int *entryLengthOut);
 
 /*
  * get_key_data: unpack a <key,data> pair into pointers to respective parts.
@@ -140,19 +140,19 @@ void make_entry(KeyDataEntry *target,
  * of the data chunk (to calculate data start of the <data> part).
  */
 
-void get_key_data(void *targetkey, DataType *targetdata,
-                  KeyDataEntry *psource, int entry_len,
-                  NodeType ndtype);
+void get_key_data(void *targetKeyOut, DataType *targetDataOut,
+                  KeyDataEntry *sourceIn, int entryLengthIn,
+                  NodeType nodeTypeIn);
 
 /*
  * get_key_length: return key length in given key_type
  */
-int get_key_length(const void *key, const AttrType key_type);
+int get_key_length(const void *keyIn, const AttrType keyTypeIn);
 
 /*
  * get_key_data_length: return (key+data) length in given key_type
  */
-int get_key_data_length(const void *key, const AttrType key_type,
-                        const NodeType ndtype);
+int get_key_data_length(const void *keyIn, const AttrType keyTypeIn,
+                        const NodeType nodeTypeIn);
 
 #endif
