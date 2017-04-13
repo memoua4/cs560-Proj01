@@ -74,32 +74,37 @@ Status BTIndexPage::get_page_no(const void *key1,
                                 AttrType key_type,
                                 PageId &pageNo) {
     PageId maxPageNo = INVALID_PAGE;
-    DataType maxDataType;
-
+    //DataType maxDataType;
+	PageId prevPageId;
     RID currentRID;
-    Status status = this->firstRecord(currentRID);
+	PageId tempPageNo;
+	KeyType key;
+
+    Status status = this->get_first(currentRID, &key, tempPageNo);
     while (status == OK)
     {
-        int len;
-        KeyDataEntry entry;
-        this->getRecord(currentRID, (char *) &entry, len);
-        int key2;
-        DataType data;
-        get_key_data(&key2, &data, &entry, len, (NodeType) type);
-        if (keyCompare(key1, &key2, key_type) >= 0)
-            if (key2 > maxPageNo) {
-                maxPageNo = key2;
-                maxDataType = data;
-            }
-
-        status = this->nextRecord(currentRID, currentRID);
+    //    int len;
+    //    KeyDataEntry entry;
+        //this->getRecord(currentRID, (char *) &entry, len);
+    //    int key2;
+    //    DataType data;
+        //get_key_data(&key2, &data, &entry, len, (NodeType) type);
+        if (keyCompare(key1, &key, key_type) >= 0) {
+//            if (key2 > maxPageNo) {
+                maxPageNo = tempPageNo;
+               // maxDataType = data;
+		}
+				//            }
+		prevPageId = tempPageNo;
+        status = get_next(currentRID, &key, tempPageNo);
     }
 
-    if (maxPageNo != INVALID_PAGE)
-        pageNo = maxDataType.pageNo;
-    else
-        pageNo = this->getPrevPage();
-
+    if (maxPageNo != INVALID_PAGE) {
+        pageNo = maxPageNo;
+	} else {
+		pageNo = prevPageId;
+	}
+	
     return OK;
 
     /*
