@@ -125,12 +125,13 @@ sortMerge::sortMerge(
             RID ignored;
             mergeSortResult->insertRecord(joinedTuple, sizeof(struct _rec) * 2, ignored);
 
-            // Use temporary variables to write each tuple to
-            Scan *tempScanS = (Scan *) malloc(sizeof (Scan));
-            memcpy(tempScanS, scanS, sizeof (Scan));
+            //
+            RID oldScanS;
+            oldScanS.pageNo = currentRidS.pageNo;
+            oldScanS.slotNo = currentRidS.slotNo;
 
             // Now output all the matching tuples after from S with the current tuple from R
-            sStatus = tempScanS->getNext(currentRidS, currentRecS, currentSLen);
+            sStatus = scanS->getNext(currentRidS, currentRecS, currentSLen);
             while (sStatus == OK && tupleCmp(currentRecR, currentRecS) == 0)
             {
                 memcpy(joinedTuple, currentRecR, currentRLen);
@@ -138,16 +139,17 @@ sortMerge::sortMerge(
                 sStatus = mergeSortResult->insertRecord(joinedTuple, sizeof(struct _rec) * 2, ignored);
                 if (sStatus != OK)
                     cout << "Is this possible?" << endl;
-                sStatus = tempScanS->getNext(currentRidS, currentRecS, currentSLen);
+                sStatus = scanS->getNext(currentRidS, currentRecS, currentSLen);
             }
-            free(tempScanS);
+            free(scanS);
 
-            // Use temporary variables to write each tuple to
-            Scan *tempScanR = (Scan *) malloc(sizeof (Scan));
-            memcpy(tempScanR, scanR, sizeof (Scan));
+            //
+            RID oldScanR;
+            oldScanR.pageNo = currentRidR.pageNo;
+            oldScanR.slotNo = currentRidR.slotNo;
 
             // Now output all the matching tuples from R with the current tuple from S
-            rStatus = tempScanR->getNext(currentRidR, currentRecR, currentRLen);
+            rStatus = scanR->getNext(currentRidR, currentRecR, currentRLen);
             while (rStatus == OK && tupleCmp(currentRecR, currentRecS) == 0)
             {
                 memcpy(joinedTuple, currentRecR, currentRLen);
@@ -155,11 +157,14 @@ sortMerge::sortMerge(
                 rStatus = mergeSortResult->insertRecord(joinedTuple, sizeof(struct _rec) * 2, ignored);
                 if (rStatus != OK)
                     cout << "Is this possible?" << endl;
-                rStatus = tempScanR->getNext(currentRidR, currentRecR, currentRLen);
+                rStatus = scanR->getNext(currentRidR, currentRecR, currentRLen);
             }
-            free(tempScanR);
+            free(scanR);
 
             delete joinedTuple;
+
+            scanS->position(oldScanS);
+            scanR->position(oldScanR);
 
             sStatus = scanS->getNext(currentRidS, currentRecS, currentSLen);
             rStatus = scanR->getNext(currentRidR, currentRecR, currentRLen);

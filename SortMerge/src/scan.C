@@ -285,4 +285,19 @@ Status Scan::nextDirPage() {
         return MINIBASE_CHAIN_ERROR(SCAN, status);
     return OK;
 }
- 
+
+Status Scan::position(RID rid) {
+    reset();
+    firstDataPage();
+
+    RID tempRid;
+    char *tempRec = new char[1000];
+    int tempLen;
+    while (userRid != rid) {
+        Status status = getNext(tempRid, tempRec, tempLen);
+        if (status != OK)
+            return status;
+    }
+    delete tempRec;
+    return OK;
+}
