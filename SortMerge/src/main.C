@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <iostream>
 
-#include "SMJTester.h"
+#include "../include/SMJTester.h"
 
 int MINIBASE_RESTART_FLAG = 0;
 

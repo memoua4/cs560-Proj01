@@ -40,7 +40,7 @@ class sortMerge
 	char*		filename3,	// Name of heapfile for merged results
 	int     	amt_of_mem,	// Number of pages available
 	TupleOrder 	order,		// Sorting order: Ascending or Descending
-	Status& 	s		// Status of constructor
+	Status& 	status		// Status of constructor
    );
 
 ~sortMerge();
