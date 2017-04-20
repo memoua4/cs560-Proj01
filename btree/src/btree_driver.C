@@ -651,9 +651,9 @@ cout << " key " << values[i].key
 
     for (i = 0; i < num_deletes; i++) {
 /*
-	    cout << "Deleting record with key = " << values[i].key 
+        cout << "Deleting record with key = " << values[i].key 
                  << "  [pageNo,slotNo] = ";
-	    cout << "[" << values[i].r.pageNo<<","
+        cout << "[" << values[i].r.pageNo<<","
                  << values[i].r.slotNo << "]" <<endl;
 */
         if (btf->Delete(&values[i].key, values[i].r) != OK) {
@@ -765,4 +765,3 @@ cout << " key " << values[i].key
     cout << "\n--------- End of destroying the index -----" << endl;
     cout << "\n\n--------- End of test4   -------------" << endl;
 }
-

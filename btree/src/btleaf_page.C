@@ -82,34 +82,14 @@ Status BTLeafPage::get_data_rid(const void *key1,
     if ( status != OK ) 
         return NOMORERECS;
 
-    while ( status == OK ) {
-        if ( keyCompare(key1, &key2, key_type) == 0 ) {
-            return OK;
-        }
-        // cout << "get_next" << endl;
+    while ( status == OK && keyCompare(key1, &key2, key_type) != 0  ) {
         status = get_next(currentRID, &key2, dataRid);
     }
 
-    // KeyDataEntry entry;
-    // DataType *dataType = (DataType *) &dataRid;
-
-    // Status status = this->firstRecord(currentRID);
-    // if (status != OK)
-    //     return MINIBASE_CHAIN_ERROR(BTLEAFPAGE, status);
-
-    // while (status == OK) {
-    //     int length;
-    //     int key2;
-
-    //     this->getRecord(currentRID, (char *) &entry, length);
-    //     get_key_data(&key2, dataType, &entry, length, (NodeType) type);
-    //     if (keyCompare(key1, &key2, key_type) == 0) {
-    //         return OK;
-    //     }
-
-    //     status = this->nextRecord(currentRID, currentRID);
-    // }
-
+    if ( status == OK ) {
+        dataRid = currentRID;
+        return OK;
+    }
     return RECNOTFOUND;
 }
 

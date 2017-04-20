@@ -31,13 +31,18 @@ BTreeFileScan::BTreeFileScan(BTreeFile *file, BTLeafPage *firstLeaf, const void 
     KeyType keyptr;
     RID dataRID;
     Status status;
+    RID prevRID;
     if ( this->startKey != NULL ) {
         status = this->currentLeaf->get_first(this->currentLeafRID, &keyptr, dataRID);
 
-        while ( status == OK && keyCompare(this->startKey, &keyptr, keyType) < 0 ) {
+        while ( status == OK && keyCompare(this->startKey, &keyptr, keyType) > 0 ) {
+            prevRID = this->currentLeafRID;
             status = this->currentLeaf->get_next(this->currentLeafRID, &keyptr, dataRID);
         }
 
+        if ( status == OK ) {
+            this->currentLeafRID = prevRID;
+        }
     }
 }
 
@@ -114,8 +119,10 @@ Status BTreeFileScan::delete_current() {
         return DONE;
 
     this->currentDeleted = true;
-    this->currentLeaf->deleteRecord(this->currentLeafRID);
-
+    Status status = this->currentLeaf->deleteRecord(this->currentLeafRID);
+    if ( status != OK ) 
+        return MINIBASE_CHAIN_ERROR(BTREE, status);
+    
     return OK;
 }
 
