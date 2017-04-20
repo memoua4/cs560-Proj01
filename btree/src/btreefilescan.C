@@ -97,7 +97,7 @@ Status BTreeFileScan::get_next(RID &pageRID, void *keyptr) {
         status = this->currentLeaf->get_first(this->currentLeafRID, keyptr, dataRID);
     }
 
-    if ( this->endKey != NULL && keyCompare(keyptr, this->endKey, this->keyType) >= 0 ) {
+    if ( this->endKey != NULL && keyCompare(keyptr, this->endKey, this->keyType) > 0 ) {
         Status pinStatus = MINIBASE_BM->unpinPage(this->currentLeaf->page_no());
         if ( pinStatus != OK ) 
             return MINIBASE_CHAIN_ERROR(BTREE, status);

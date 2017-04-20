@@ -375,6 +375,13 @@ Status BTreeFile::insert(const void *key, const RID rid) {
     if (status != OK)
         return MINIBASE_CHAIN_ERROR(BTREE, status);
 
+    if ( leafPage->get_data_rid(key, headerPageInfo->keyType, dataRid) == OK ) {
+        status = MINIBASE_BM->unpinPage(leafPageId);
+        if ( status != OK ) 
+            return MINIBASE_CHAIN_ERROR(BTREE, status);
+        return OK;
+    }
+
     dataKeySize = get_key_data_length(key, headerPageInfo->keyType, LEAF);
     leafPageSize = ((HFPage*) leafPage)->available_space();
 
