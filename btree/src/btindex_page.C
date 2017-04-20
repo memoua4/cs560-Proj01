@@ -74,10 +74,9 @@ Status BTIndexPage::get_page_no(const void *key1,
                                 AttrType key_type,
                                 PageId &pageNo) {
     PageId maxPageNo = INVALID_PAGE;
-    PageId prevPageId;
     RID currentRID;
     PageId tempPageNo;
-    void * key;
+    KeyType key;
 
     Status status = get_first(currentRID, &key, tempPageNo);
 
@@ -93,29 +92,6 @@ Status BTIndexPage::get_page_no(const void *key1,
     }
 
     return OK;
-
-    /*
-    for (int i = slotCnt; i >= 0; i--)
-    {
-        if (slot[i].length != EMPTY_SLOT)
-        {
-            void *key2 = (data + slot[i].offset);
-            int compare = keyCompare(key, key2, key_type);
-            if (compare >= 0) // key1 >= key2
-            {
-                DataType* dataType = (DataType *) &pageNo;
-
-                KeyDataEntry* entry = (KeyDataEntry *) key2;
-
-                get_key_data(NULL, dataType, entry, slot[i].length, (NodeType) type);
-
-                return OK;
-            }
-        }
-    }
-    pageNo = this->getPrevPage();
-    return OK;
-     */
 }
 
 
