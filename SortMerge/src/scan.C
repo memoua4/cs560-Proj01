@@ -298,6 +298,10 @@ Status Scan::position(RID rid) {
         if (status != OK)
             return status;
     }
+    Status  status = getNext(tempRid, tempRec, tempLen);
+    if (status != OK)
+        return status;
+
     delete tempRec;
     return OK;
 }

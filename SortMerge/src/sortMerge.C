@@ -137,11 +137,12 @@ sortMerge::sortMerge(
                 memcpy(joinedTuple, currentRecR, currentRLen);
                 memcpy(joinedTuple + sizeof(struct _rec), currentRecS, currentSLen);
                 sStatus = mergeSortResult->insertRecord(joinedTuple, sizeof(struct _rec) * 2, ignored);
-                if (sStatus != OK)
-                    cout << "Is this possible?" << endl;
+                if (sStatus != OK) {
+                    cout << "Is this possible?" << sStatus << endl;
+                    //minibase_errors.show_errors();
+                }
                 sStatus = scanS->getNext(currentRidS, currentRecS, currentSLen);
             }
-            free(scanS);
 
             //
             RID oldScanR;
@@ -156,17 +157,20 @@ sortMerge::sortMerge(
                 memcpy(joinedTuple + sizeof(struct _rec), currentRecS, currentSLen);
                 rStatus = mergeSortResult->insertRecord(joinedTuple, sizeof(struct _rec) * 2, ignored);
                 if (rStatus != OK)
-                    cout << "Is this possible?" << endl;
+                    cout << "Is this possible?" << rStatus << endl;
                 rStatus = scanR->getNext(currentRidR, currentRecR, currentRLen);
             }
-            free(scanR);
 
             delete joinedTuple;
+
+            //cout << oldScanS.pageNo << ", " << oldScanS.slotNo << endl;
 
             scanS->position(oldScanS);
             scanR->position(oldScanR);
 
+            //cout << currentRidS.pageNo << ", " << currentRidS.slotNo << endl;
             sStatus = scanS->getNext(currentRidS, currentRecS, currentSLen);
+            //cout << currentRidS.pageNo << ", " << currentRidS.slotNo << endl;
             rStatus = scanR->getNext(currentRidR, currentRecR, currentRLen);
         }
     }

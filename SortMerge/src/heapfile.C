@@ -424,7 +424,7 @@ Status HeapFile::deleteFile() {
                     return MINIBASE_CHAIN_ERROR(HEAPFILE, status);
                 delete pageInfo;
             //Loop while we have another record
-            } while (currentDirPage->nextRecord(currentDirRecord, currentDirRecord) != OK);
+            } while (currentDirPage->nextRecord(currentDirRecord, currentDirRecord) == OK);
         }
 
         // Move to the next page

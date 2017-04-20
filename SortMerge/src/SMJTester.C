@@ -7,17 +7,17 @@
 #include <assert.h>
 #include <unistd.h>
 
-#include "sortMerge.h"
-#include "db.h"
-#include "buf.h"
-#include "minirel.h"
-#include "heapfile.h"
-#include "scan.h"
-#include "new_error.h"
+#include "../include/sortMerge.h"
+#include "../include/db.h"
+#include "../include/buf.h"
+#include "../include/minirel.h"
+#include "../include/heapfile.h"
+#include "../include/scan.h"
+#include "../include/new_error.h"
 #include <pwd.h>
 
 
-#include "SMJTester.h"
+#include "../include/SMJTester.h"
 
 #define SORTPGNUM	 10
 #define NUMFILES	  5
