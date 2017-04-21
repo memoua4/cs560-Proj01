@@ -80,7 +80,7 @@ Status BTIndexPage::get_page_no(const void *key1,
 
     Status status = get_first(currentRID, &key, tempPageNo);
 
-    while ( keyCompare(key1, &key, key_type) > 0 && status == OK ) {
+    while ( keyCompare(key1, &key, key_type) >= 0 && status == OK ) {
         maxPageNo = tempPageNo;
         status = get_next(currentRID, &key, tempPageNo);
     }

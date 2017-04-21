@@ -74,23 +74,27 @@ Status BTLeafPage::insertRec(const void *key,
 Status BTLeafPage::get_data_rid(const void *key1,
                                 AttrType key_type,
                                 RID &dataRid) {
+
     RID currentRID;
     Status status;
     KeyType key2;
+    int compare;
 
     status = get_first(currentRID, &key2, dataRid);
     if ( status != OK ) 
         return NOMORERECS;
 
-    while ( status == OK && keyCompare(key1, &key2, key_type) != 0  ) {
+    while ( status == OK && (compare = keyCompare(key1, &key2, key_type)) != 0  ) {
         status = get_next(currentRID, &key2, dataRid);
     }
 
-    if ( status == OK ) {
+    if ( compare == 0 ) {
         dataRid = currentRID;
         return OK;
     }
+
     return RECNOTFOUND;
+
 }
 
 /* 

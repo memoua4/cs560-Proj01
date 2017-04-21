@@ -390,7 +390,6 @@ Status BTreeFile::insert(const void *key, const RID rid) {
         status = splitLeafPage(leafPage, leafPageId, (headerPageInfo->height - 1), key, rid);
         if (status != OK)
             return MINIBASE_CHAIN_ERROR(BTREE, status);
-
     } else {
 
         status = leafPage->insertRec(key, headerPageInfo->keyType, rid, dataRid);
@@ -507,7 +506,6 @@ Status BTreeFile::splitLeafPage(BTLeafPage* leafPage, PageId leafPageId,
     status = leafPage->get_first(rid2, &dataKey, dataRid2);
     if (status != OK)
         return MINIBASE_CHAIN_ERROR(BTREE, status);
-    KeyType firstKey = dataKey;
     
     count++;
 
@@ -515,6 +513,8 @@ Status BTreeFile::splitLeafPage(BTLeafPage* leafPage, PageId leafPageId,
         leafPage->get_next(rid2, &dataKey, dataRid2);
 
     RID tmpRid;
+
+    KeyType firstKey = dataKey;
 
     status = newLeafPage->insertRec(&dataKey, headerPageInfo->keyType, dataRid2, tmpRid);
     if (status != OK)
@@ -574,9 +574,6 @@ Status BTreeFile::splitLeafPage(BTLeafPage* leafPage, PageId leafPageId,
 
         headerPageInfo->rootPageId = newRootPageId;
         headerPageInfo->height = headerPageInfo->height + 1;
-
-        // cout << "Root Page Id == " << headerPageInfo->rootPageId << endl;
-        // printPage();
     } else {
         height--;
         BTIndexPage *parentPage;
@@ -787,15 +784,11 @@ Status BTreeFile::getStartingBTLeafPage(PageId& leafPageId,
             if (status != OK)
                 return MINIBASE_CHAIN_ERROR(BTREE, status);
         } else {
-            // cout << "index 1 = " << (long int) &index << endl;
             status = ((BTIndexPage*) page)->get_page_no(key, headerPageInfo->keyType, tmpPageNo);
-
             if (status != OK)
                 return MINIBASE_CHAIN_ERROR(BTREE, status);
-            // cout << "index 2 = " << (long int) &index << endl;
        }
 
-        // cout << "Index 3 = " << (long int) &index << endl;
         parentPages[index].indexPageId = pageNo;
         index++;
         status = MINIBASE_BM->unpinPage(pageNo, true);
