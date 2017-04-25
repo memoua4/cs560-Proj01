@@ -41,6 +41,13 @@ const char* BtreeErrorMsgs[] = {
 
 static error_string_table btree_table(BTREE, BtreeErrorMsgs);
 
+/*
+ * Function: printPage() : void 
+ * Description: This is a debugger. Helps debug the program whenever there is a problem. 
+ * It beings by retrieving the first leaf page (the left most leaf page) and start printing all
+ * the leaf page. It then moves up the b-tree and print all the keys for all the BTIndex page. 
+ */
+
 void BTreeFile::printPage() {
 	PageId pageId;
 	Page *page;
@@ -124,6 +131,10 @@ void BTreeFile::printPage() {
 	}
 }
 
+ /*
+  * an index with given filename should already exist,
+  * this opens it.
+  */
 BTreeFile::BTreeFile(Status& returnStatus, const char *filename) {
     Status status; // Validation Variable
 
@@ -148,6 +159,14 @@ BTreeFile::BTreeFile(Status& returnStatus, const char *filename) {
 
 }
 
+/*
+ * Function: BTreeFile(Status &returnStatus, const char *filename)
+ * Description: Given an index ( or filename ), the constructor attempts to open the file. If the file does not exists in the 
+ * DB, then it creates a new file. If the file exists, then the opens the file, otherwise it creates a new file and stores all the 
+ * necessary information about the btree. It stores the filename, header page number, the root page number, the key type,
+ * and the key size. There is also a struct that stores all predecessors (parent and grandparent) page number. The variable
+ * is called parentPages. 
+ */
 BTreeFile::BTreeFile(Status& returnStatus, const char *filename,
         const AttrType keytype,
         const int keysize) {
@@ -223,6 +242,11 @@ BTreeFile::BTreeFile(Status& returnStatus, const char *filename,
     returnStatus = OK;
 }
 
+/* 
+ * Function: ~BTreeFile()
+ * Description: The deconstructor does not destroy the page. Instead, it unpins the header page id, but does not deallocate
+ * the page. It closes the index, but will allow the index to open again when the running program calls the constructor again.
+ */
 BTreeFile::~BTreeFile() {
     Status status;
 
@@ -239,6 +263,14 @@ BTreeFile::~BTreeFile() {
     }
 }
 
+/* 
+ * Function: DestroyFile() : Status
+ * Description: This function destroys the entire file.  It starts by obtaining the leaf most leaf page. The function deletes all the 
+ * entries, unpins the page, and then free the page. It then proceeds to the next leaf page and deletes all the record and free
+ * page. After it finishes freeing all the BTLeafPage, it then deletes all the parents and grandparents leaf. These are BTIndexPage.
+ * After it finishes freeing all the BTIndexPage (all the pages in the tree, including the root tree), it unpins the file, frees the file,
+ * and delete the entry from the DB. 
+ */
 Status BTreeFile::destroyFile() {
     Status status;
 
@@ -352,6 +384,19 @@ Status BTreeFile::destroyFile() {
     return OK;
 }
 
+/* 
+ * Function: insert(const void *key, const RID rid) 
+ * @param: 
+ *      key : the key being inserted
+ *      rid : record id used to store the key 
+ * @return:
+ *      status : this indicates whether or not the record is inserted properly into the btree
+ * Description: Given a key and rid, this method attempts to insert the record into the btree. It first checks to make sure that all record size
+ * is smaller than the keysize. If it is larger than the actual keysize, the method returns an error message indicating the keysize of the key is 
+ * bigger than the actual record key size. If it passes this check, it get the appropriate BTLeafPage that stores the record. It then checks if leaf
+ * can still store the record. If the record's size is greater than the available space, then it splits the BTLeafPage. Otherwise, it will insert the 
+ * record into the page. 
+ */
 Status BTreeFile::insert(const void *key, const RID rid) {
     Status status;
     int keyLength;
@@ -409,6 +454,20 @@ Status BTreeFile::insert(const void *key, const RID rid) {
     return OK;
 }
 
+/*
+ * Function: Delete (const void *key, const RID rid)
+ * @param: 
+ *          key : indicates the key being deleted 
+ *          rid : the rid of the key being deleted 
+ * @return: 
+ *          status : Determines if the record has been deleted appropriately from the page. It returns either Buffer Manager error message,
+ *                      RECNOTFOUND, or OK. Buffer Manager failed statuses because it failed to pin or unpin pages. RECNOTFOUND - the record
+ *                      does not exists in the page and OK if the record is deleted from the page. 
+ * Description: It first obtains the BTLeafPage where the record lies. It then uses get_data_rid() to check if the record exists in the page. 
+ * If the page does not have the record, it will return RECNOTFOUND; otherwise it returns OK, indicating that the record exists in the page.
+ * It attempts to delete the record if the file exists. If it fails to attempt to delete the file, it will then return the corresponding error message
+ * from the deleteRecord message. If the record is deleted, it returns OK; otherwise RECNOTFOUND. 
+ */
 Status BTreeFile::Delete(const void *key, const RID rid) {
     Status status;
     PageId pageId;
@@ -445,6 +504,25 @@ Status BTreeFile::Delete(const void *key, const RID rid) {
     return RECNOTFOUND;
 }
 
+/* 
+ * Function: new_scan(const void *lo_key, const void *hi_key) 
+ * @params
+ *          lo_key: this is the starting key 
+ *          hi_key: this is the ending key 
+ * @return
+ *          return the scan
+ * Description: There are different conditions for this function. 
+ *         lo_key = NULL && hi_key = NULL 
+ *              A full tree scan (start from the beginning of the leaf page to the end of the leaf page)
+ *         lo_key != NULL && hi_key != NULL
+ *              An equality search
+ *         lo_key != NULL && hi_key = NULL
+ *              Starts at the record and continues to scan until it reaches the hi_key
+ *         lo_key = NULL && hi_key != NULL
+ *              Starts at the lowest key and continues to scan until it reaches the end of the record 
+ * Creates a new instance of BTreeFileScan and initializes all the values by passing in the lo_key, hi_key, the leaf page, key type, and 
+ * the BTreeFile. 
+ */
 IndexFileScan *BTreeFile::new_scan(const void *lo_key, const void *hi_key) {
     Status status;
     PageId pageId;
@@ -475,10 +553,39 @@ IndexFileScan *BTreeFile::new_scan(const void *lo_key, const void *hi_key) {
     return scan;
 }
 
+/* 
+ * Function: keysize()
+ * @return
+ *      return the keysize of the page 
+ * Description: A simply statement that returns the key size of the BTree file. 
+ */
 int BTreeFile::keysize() {
     return headerPageInfo->keySize;
 }
 
+/* 
+ * Function: splitLeafPage(BTLeafPage* leafPage, PageId leafPageId, int height, const void *key, const RID rid)
+ * @param
+ *              leafPage : the leaf page that will be used to be splitted
+ *              leafPageId : the leaf page id that is associated witht he leaf page being passed in
+ *              height : where we are in the height of the tree
+ *              key : the key that will be inserted 
+ *              rid : the associated RID of the key 
+ * @return
+ *              status : return the status (indicating whether or not it was able to split the leaf page)
+ * Description: 
+ *              1) Creates the new leaf page 
+ *              2) Iterate through the old leaf page until it reaches half of the record
+ *              3) Iterate through the second half of the old leaf page, inserting the second half of the record into the new leaf page and deleting
+ *                  the record in the old leaf page. 
+ *              4) Inserts the key
+ *              5) Insert the new leaf page 
+ *                      a) If the old leaf page is a the root page, it creates a new index page (this is the new root page) 
+ *                      b) Otherwise, it inserts it into the index page 
+ *                              ii) Checks if there is enough space to insert into the index page 
+ *                                         - If there is not enough space, then it splits the index page
+ *                                         - If there is enough space, it inserts the leaf page into the index page
+ */
 Status BTreeFile::splitLeafPage(BTLeafPage* leafPage, PageId leafPageId,
         int height, const void* key, const RID rid) {
     Status status;
@@ -645,6 +752,26 @@ Status BTreeFile::splitLeafPage(BTLeafPage* leafPage, PageId leafPageId,
     return OK;
 }
 
+/* 
+ * Function: splitIndexPage(BTIndexPage *page, PageId, pageId, int height, void *recKey) 
+ * @param
+ *              page : the index page being splitted
+ *              page id : the page number of the index page being splitted
+ *              height: where we are in the tree (height-wise)
+ *              recKey : the key of the index page being inserted 
+ * @return
+ *              status : indicates whether or not the index page is able to split without any error message. 
+ * Description: 
+ *              1) Creates a new index page 
+ *              2) Iterate through the old index page until it reaches half of the record 
+ *              3) Iterate through the second half of the index page, storing the second half of the record intot he new index page and deleting the 
+ *                  records in the old index page 
+ *              4) Insert the Key
+ *              5) Insert the new index page
+ *                          i) If the index page is the root page, it creates a new root page 
+ *                          ii) otherwise, it attempts to insert it. If there is not enough space, it does a recursive call and call splitIndexPage, otherwise 
+ *                              it attempts to insert it into the index page
+ */
 Status BTreeFile::splitIndexPage(BTIndexPage* page, PageId pageId, int height, void* recKey) {
     Status status;
     BTIndexPage* newIndexPage;
@@ -673,7 +800,6 @@ Status BTreeFile::splitIndexPage(BTIndexPage* page, PageId pageId, int height, v
 
     status = ((BTIndexPage*) page)->get_first(tmpRid, &tmpKey, tmpPageId);
 
-    KeyType firstKey = tmpKey;
     RID firstRid = tmpRid;
 
     if (status != OK)
@@ -685,7 +811,8 @@ Status BTreeFile::splitIndexPage(BTIndexPage* page, PageId pageId, int height, v
         ((BTIndexPage*) page)->get_next(tmpRid, &tmpKey, tmpPageId);
 
     RID tmpRid2;
-
+    KeyType firstKey = tmpKey;
+    PageId firstPageNo = tmpPageId;
     status = newIndexPage->insertKey(&tmpKey, headerPageInfo->keyType, tmpPageId, tmpRid2);
     if (status != OK)
         return MINIBASE_CHAIN_ERROR(BTREE, status);
@@ -699,6 +826,14 @@ Status BTreeFile::splitIndexPage(BTIndexPage* page, PageId pageId, int height, v
         ((BTIndexPage*) page)->get_next(tmpRid, &tmpKey, tmpPageId);
         newIndexPage->insertKey(&tmpKey, headerPageInfo->keyType, tmpPageId, tmpRid2);
         ((BTIndexPage*) page)->deleteKey(&tmpKey, headerPageInfo->keyType, tmpRid);
+    }
+
+    if ( keyCompare(recKey, &firstKey, headerPageInfo->keyType) < 0 ) {
+        /* Insert into old index page */
+        ((BTIndexPage*)page)->insertKey(&firstKey, headerPageInfo->keytype, firstPageNo, tmpRid2);
+    } else {
+        /* Insert into the new index page */
+        newIndexPage->insertKey(&firstKey, headerPageInfo->keyType, tmpPageId, tmprid2);
     }
 
     if (height == INVALID_PAGE) {
@@ -761,6 +896,22 @@ Status BTreeFile::splitIndexPage(BTIndexPage* page, PageId pageId, int height, v
     return OK;
 }
 
+/*
+ * Function: getStartingBTLeafPage(PageId &leafPageId, const void* key)
+ * @param 
+ *              leafPageId : passed in by reference variables. This variable will store the approrpiate leaf page id 
+ *              key : key used to find the appropriate leaf page 
+ * @return 
+ *              status : determines if it is able to obtain the first leaf page 
+ * Description: 
+ *              If key is NULL, it gets the left most leaf page 
+ *              If key is not NULL, it gets the page that will be used to store the leaf page 
+ *              1) Starts at the root page 
+ *              2) Continues to iterate through the tree until reaches a BTLeafPage
+ *                      a) If key is NULL, continue to grab the first record until the page is a leaf page
+ *                      b) If key is NOT NULL, use get_page_no() to get the approrpiate page until the page is a leaf page
+ *             3) Returns the leafPageId found
+ */
 Status BTreeFile::getStartingBTLeafPage(PageId& leafPageId,
         const void* key) {
     Status status;
