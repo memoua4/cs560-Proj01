@@ -173,14 +173,14 @@ BTreeFile::BTreeFile(Status& returnStatus, const char *filename,
 
     Status status;
 
-    if (keytype != attrString && keytype != attrInteger) {
-        returnStatus = MINIBASE_FIRST_ERROR(BTREE, ATTRNOTFOUND);
-        return;
-    }
-
     status = MINIBASE_DB->get_file_entry(filename, headerPageId);
 
     if (status != OK) {
+
+        if (keytype != attrString && keytype != attrInteger) {
+            returnStatus = MINIBASE_FIRST_ERROR(BTREE, ATTRNOTFOUND);
+            return;
+        }
 
         status = MINIBASE_BM->newPage(headerPageId, (Page*&) headerPageInfo);
 
