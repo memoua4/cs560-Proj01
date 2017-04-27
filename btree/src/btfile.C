@@ -830,10 +830,10 @@ Status BTreeFile::splitIndexPage(BTIndexPage* page, PageId pageId, int height, v
 
     if ( keyCompare(recKey, &firstKey, headerPageInfo->keyType) < 0 ) {
         /* Insert into old index page */
-        ((BTIndexPage*)page)->insertKey(&firstKey, headerPageInfo->keytype, firstPageNo, tmpRid2);
+        ((BTIndexPage*)page)->insertKey(&firstKey, headerPageInfo->keyType, firstPageNo, tmpRid2);
     } else {
         /* Insert into the new index page */
-        newIndexPage->insertKey(&firstKey, headerPageInfo->keyType, tmpPageId, tmprid2);
+        newIndexPage->insertKey(&firstKey, headerPageInfo->keyType, tmpPageId, tmpRid2);
     }
 
     if (height == INVALID_PAGE) {
