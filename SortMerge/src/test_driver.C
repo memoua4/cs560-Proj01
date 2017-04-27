@@ -6,9 +6,9 @@
 #include <iostream>
 #include <assert.h>
 
-#include "new_error.h"
+#include "../include/new_error.h"
 // include "/afs/cs.wisc.edu/u/j/g/jglarson/cs564/proj1/test_driver.h"
-#include "test_driver.h"
+#include "../include/test_driver.h"
 #include <pwd.h>
 #include <unistd.h>
 

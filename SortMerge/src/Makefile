@@ -15,12 +15,12 @@ MINIBASE = ..
 
 CC=g++
 
-CFLAGS= -DUNIX -Wall -Wno-write-strings -g
+CFLAGS= -DUNIX -Wall -Wno-write-strings -g -std=gnu++11
 
 INCLUDES = -I${MINIBASE}/include -I.
 
 LFLAGS= -L$(MINIBASE)/lib \
-        -ldb -lm
+        -ldb -lm 
 
 SRCS =test_driver.C SMJTester.C main.C sortMerge.C scan.C \
 	hfpage.C new_error.C system_defs.C heapfile.C\
