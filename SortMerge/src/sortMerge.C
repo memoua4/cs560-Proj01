@@ -148,6 +148,9 @@ sortMerge::sortMerge(
             RID oldScanS;
             oldScanS.pageNo = currentRidS.pageNo;
             oldScanS.slotNo = currentRidS.slotNo;
+            // Save off the currentSRec
+            char *tempSRec = new char[ sizeof(struct _rec)];
+            memcpy(tempSRec, currentRecS, currentSLen);
 
             // Grab the next tuple from the S scan
             sStatus = scanS->getNext(currentRidS, currentRecS, currentSLen);
@@ -167,6 +170,9 @@ sortMerge::sortMerge(
             RID oldScanR;
             oldScanR.pageNo = currentRidR.pageNo;
             oldScanR.slotNo = currentRidR.slotNo;
+            // We'll need to ensure that we restore currentRecS
+            delete currentRecS;
+            currentRecS = tempSRec;
 
             // Grab the next tuple from the S scan
             rStatus = scanR->getNext(currentRidR, currentRecR, currentRLen);
@@ -201,6 +207,9 @@ sortMerge::sortMerge(
 
     delete scanR;
     delete scanS;
+
+    heapFileR->deleteFile();
+    heapFileS->deleteFile();
 
     delete heapFileR;
     delete heapFileS;

@@ -62,6 +62,9 @@ Scan::~Scan() {
 Status Scan::getNext(RID &rid, char *recPtr, int &recLen) {
     Status status;
 
+    if (scanIsDone)
+        return DONE;
+
     // Check if we have a valid datapage to grab from
     if (nxtUserStatus != OK) {
         status = nextDataPage();
@@ -104,7 +107,9 @@ Status Scan::init(HeapFile *hf) {
     // put your code here
     _hf = hf; // set the heapfile name
     scanIsDone = false; // 0 indicates that the scan is not finished yet
-    return firstDataPage(); // get the first page
+    Status toReturn = firstDataPage(); // get the first page
+    scanIsDone = hf->getRecCnt() == 0;
+    return toReturn;
 }
 
 // *******************************************
@@ -140,7 +145,7 @@ Status Scan::reset() {
         // Unpin the dirPage
         dirPage = NULL;
     }
-    scanIsDone = false;
+    scanIsDone = _hf->getRecCnt() == 0;
     nxtUserStatus = OK;
     return OK;
 }
@@ -170,8 +175,9 @@ Status Scan::firstDataPage() {
 
     status = dirPage->firstRecord(dataPageRid);
     if (status != OK && status == DONE) {
-        reset();
-        return DONE; // no record exists in the data page
+
+        //reset();
+        return OK; // no record exists in the data page
     }
 
     DataPageInfo *dataPageInfo = new DataPageInfo();
@@ -211,10 +217,11 @@ Status Scan::nextDataPage() {
 
     // Retrieve the next DataPageInfo
     RID nextDataPageInfoRID;
+
     // Retrieve the next dataPage from the directory
     status = dirPage->nextRecord(dataPageRid, nextDataPageInfoRID);
     // Done means it's time to move onto the next directory page
-    if (status == DONE) {
+    if (status == DONE || status == FAIL) {
         Status hasNextDirPage = nextDirPage();
         if (hasNextDirPage == OK) {
             // Retrieve the next dataPage from the directory
@@ -222,7 +229,7 @@ Status Scan::nextDataPage() {
         }
             // if no next directory pages exists, we're done with the scan
         else if (hasNextDirPage == DONE) {
-            reset();
+            //reset();
             return DONE;
         } else return MINIBASE_CHAIN_ERROR(SCAN, status);
     }
